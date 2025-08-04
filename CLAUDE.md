@@ -24,6 +24,12 @@ npm run lint:fix
 
 # Type checking without emitting files
 npm run type-check
+
+# Run tests
+npm test
+npm run test:watch      # Watch mode
+npm run test:coverage   # With coverage
+npm run test:ci         # CI mode
 ```
 
 ## Project Structure
@@ -37,7 +43,14 @@ src/
 │   ├── save-user-message.ts
 │   └── graph-memory-search.ts
 ├── types/         # TypeScript type definitions
+├── __tests__/     # Unit tests (co-located with source)
 └── index.ts       # MCP server setup and entry point
+
+tests/
+├── fixtures/      # Test data and mock objects
+├── mocks/         # Service mocks (Dgraph, AI SDK)
+├── integration/   # Integration tests
+└── setup.ts       # Global test configuration
 ```
 
 ## Architecture Notes
@@ -59,6 +72,19 @@ Optional: `AI_PROVIDER`, `EMBEDDING_MODEL`, `LLM_MODEL`
 - Entity nodes with vector embeddings for semantic search
 - Memory nodes linked to entities via relationships
 - HNSW vector index for efficient similarity search
+
+## Testing
+
+The project includes comprehensive testing with Jest:
+- **Unit Tests**: Test individual services and tools with mocked dependencies
+- **Integration Tests**: Test MCP server functionality end-to-end
+- **Coverage**: Aim for >90% code coverage on core business logic
+- **CI/CD**: Automated testing in GitHub Actions for all PRs and pushes
+
+Run tests locally:
+- `npm test` - Run all tests once
+- `npm run test:watch` - Run tests in watch mode during development
+- `npm run test:coverage` - Generate coverage reports
 
 ## Deployment
 

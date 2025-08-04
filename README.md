@@ -61,7 +61,66 @@ npm run lint
 
 # Type check
 npm run type-check
+
+# Run tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run tests for CI
+npm run test:ci
 ```
+
+## Testing
+
+The project includes a comprehensive test suite with:
+
+### Unit Tests
+- **DgraphService**: Database operations, schema initialization, vector search
+- **AIService**: Entity extraction, embedding generation, summary creation  
+- **MCP Tools**: save_user_message and graph_memory_search functionality
+
+### Integration Tests
+- **MCP Server**: End-to-end server functionality and tool integration
+
+### Test Structure
+```
+tests/
+├── fixtures/          # Test data and mock objects
+├── mocks/             # Service mocks (Dgraph, AI)
+├── integration/       # Integration tests
+└── setup.ts           # Global test configuration
+
+src/__tests__/         # Unit tests alongside source code
+├── lib/               # Service unit tests
+└── tools/             # Tool unit tests
+```
+
+### Running Tests
+```bash
+# Run all tests
+npm test
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run tests in watch mode during development
+npm run test:watch
+
+# Run tests for CI (no watch, with coverage)
+npm run test:ci
+```
+
+### Test Configuration
+- **Jest** with TypeScript support via ts-jest
+- **ESM modules** support for modern JavaScript
+- **Mocking** of external dependencies (Dgraph, AI services)
+- **Coverage reporting** with HTML and LCOV formats
+- **GitHub Actions** CI pipeline for automated testing
 
 ## Deployment
 

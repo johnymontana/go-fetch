@@ -7,3 +7,16 @@ dist/
 *.log
 .DS_Store
 .vercel
+
+# Test coverage
+coverage/
+*.lcov
+
+# Jest
+jest.config.local.js
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

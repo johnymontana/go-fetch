@@ -51,10 +51,16 @@ export class GraphMemorySearchTool {
       });
 
       // Generate a comprehensive summary using AI
-      const summary = await this.aiService.generateMemorySummary(
-        searchResults.map(r => ({ name: r.entity.name, type: r.entity.type })),
-        searchResults.flatMap(r => r.relatedMemories)
-      );
+      let summary: string;
+      try {
+        summary = await this.aiService.generateMemorySummary(
+          searchResults.map(r => ({ name: r.entity.name, type: r.entity.type })),
+          searchResults.flatMap(r => r.relatedMemories)
+        );
+      } catch (error) {
+        console.error('Summary generation failed:', error);
+        summary = 'Found relevant memories but summary generation failed.';
+      }
 
       // Format the response
       const formattedResults = searchResults
