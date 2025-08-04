@@ -19,13 +19,13 @@ An MCP (Model Context Protocol) server that provides graph-based memory tools fo
 - Dgraph database instance (local or cloud)
 - OpenAI or Anthropic API key
 
-## Dgraph Connection Formats
+## Dgraph Connection
 
-The project supports flexible Dgraph connection string formats:
+The project uses standard Dgraph connection strings with `dgraph.open()`:
 
-- **Single port**: `dgraph://localhost:9080` (HTTP port auto-derived as gRPC-1000)
-- **Dual port**: `dgraph://localhost:9080,8080` (explicit gRPC and HTTP ports)
-- **Remote**: `dgraph://dgraph.example.com:443,443` (for cloud instances)
+- **Local**: `dgraph://localhost:9080`
+- **With auth**: `dgraph://user:password@localhost:9080`
+- **Cloud**: `dgraph://your-instance.cloud:443?sslmode=verify-ca&bearertoken=your-token`
 
 ## Setup
 
@@ -46,6 +46,11 @@ The project supports flexible Dgraph connection string formats:
    OPENAI_API_KEY=your_openai_api_key
    EMBEDDING_MODEL=text-embedding-3-small
    LLM_MODEL=gpt-4o-mini
+   ```
+
+   For cloud instances, use the full connection string:
+   ```env
+   DGRAPH_CONNECTION_STRING=dgraph://your-instance.cloud:443?sslmode=verify-ca&bearertoken=your-token
    ```
 
 3. **Start Dgraph** (if running locally):

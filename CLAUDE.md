@@ -69,9 +69,10 @@ Required: `DGRAPH_CONNECTION_STRING`, `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
 Optional: `AI_PROVIDER`, `EMBEDDING_MODEL`, `LLM_MODEL`
 
 ### Dgraph Connection String Format
-- Single port: `dgraph://localhost:9080` (HTTP auto-derived as gRPC-1000)
-- Dual port: `dgraph://localhost:9080,8080` (explicit gRPC,HTTP ports)
-- Cloud: `dgraph://your-instance.cloud:443,443`
+Uses standard `dgraph.open()` connection strings:
+- Local: `dgraph://localhost:9080`
+- With auth: `dgraph://user:password@localhost:9080`
+- Cloud: `dgraph://your-instance.cloud:443?sslmode=verify-ca&bearertoken=your-token`
 
 ### Dgraph Schema
 - Entity nodes with vector embeddings for semantic search

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { mockDgraphConfig, mockEntity, mockMemory } from '../../test-fixtures/test-data.js';
 import { DgraphService } from '../../lib/dgraph.js';
+import * as dgraph from 'dgraph-js';
 
 // Mock dgraph-js
 const mockTxn = {
@@ -32,30 +33,23 @@ jest.mock('dgraph-js', () => ({
   Mutation: jest.fn(() => mockMutation),
   Operation: jest.fn(() => mockOperation),
   Request: jest.fn(),
+  open: jest.fn(() => Promise.resolve(mockClient)),
 }));
 
 describe('DgraphService', () => {
   let dgraphService: DgraphService;
 
   describe('constructor', () => {
-    it('should parse single port connection string', () => {
+    it('should create DgraphService instance', () => {
       const config = { connectionString: 'dgraph://localhost:9080' };
       expect(() => new DgraphService(config)).not.toThrow();
     });
 
-    it('should parse dual port connection string', () => {
-      const config = { connectionString: 'dgraph://localhost:9080,8080' };
-      expect(() => new DgraphService(config)).not.toThrow();
-    });
-
-    it('should throw error for invalid connection string format', () => {
-      const config = { connectionString: 'http://localhost:8080' };
-      expect(() => new DgraphService(config)).toThrow('Invalid Dgraph connection string. Must start with dgraph://');
-    });
-
-    it('should throw error for malformed connection string', () => {
-      const config = { connectionString: 'dgraph://localhost' };
-      expect(() => new DgraphService(config)).toThrow('Invalid Dgraph connection string format');
+    it('should not initialize client in constructor', () => {
+      const config = { connectionString: 'dgraph://localhost:9080' };
+      const service = new DgraphService(config);
+      // Client should be null until initialize() is called
+      expect(() => service.close()).not.toThrow(); // close() handles null client
     });
   });
 
@@ -76,11 +70,25 @@ describe('DgraphService', () => {
     dgraphService = new DgraphService(mockDgraphConfig);
   });
 
+  beforeEach(async () => {
+    // Initialize the service for tests that need it
+    await dgraphService.initialize();
+  });
+
   describe('initialize', () => {
+    it('should call dgraph.open with connection string', async () => {
+      const freshService = new DgraphService(mockDgraphConfig);
+      await freshService.initialize();
+
+      expect(dgraph.open).toHaveBeenCalledWith(mockDgraphConfig.connectionString);
+    });
+
     it('should initialize Dgraph schema successfully', async () => {
+      // This test runs after the global beforeEach, so alter has been called once already
+      const initialCallCount = (mockClient.alter as any).mock.calls.length;
       await dgraphService.initialize();
 
-      expect(mockClient.alter).toHaveBeenCalledTimes(1);
+      expect(mockClient.alter).toHaveBeenCalledTimes(initialCallCount + 1);
       // Just verify that alter was called - schema verification is complex with mocks
     });
 

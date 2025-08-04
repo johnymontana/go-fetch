@@ -1,51 +1,24 @@
-import { DgraphClient, DgraphClientStub, Mutation, Operation } from 'dgraph-js';
+import * as dgraph from 'dgraph-js';
+import { Mutation, Operation } from 'dgraph-js';
 import type { DgraphConfig, Entity, Memory } from '../types/index.js';
 
 export class DgraphService {
-  private client: DgraphClient;
+  private client: dgraph.DgraphClient | null = null;
 
-  constructor(config: DgraphConfig) {
-    const parsedUrl = this.parseConnectionString(config.connectionString);
-    const clientStub = new DgraphClientStub(parsedUrl.grpcAddress);
-    this.client = new DgraphClient(clientStub);
+  constructor(private config: DgraphConfig) {
+    // Client will be initialized asynchronously in initialize()
   }
 
-  private parseConnectionString(connectionString: string): { grpcAddress: string; httpAddress: string } {
-    // Parse dgraph://host:port or dgraph://host:grpc_port,http_port format
-    if (!connectionString.startsWith('dgraph://')) {
-      throw new Error('Invalid Dgraph connection string. Must start with dgraph://');
+  private ensureClient(): dgraph.DgraphClient {
+    if (!this.client) {
+      throw new Error('DgraphService not initialized. Call initialize() first.');
     }
-
-    const url = connectionString.replace('dgraph://', '');
-    const [hostPart, portsPart] = url.split(':');
-    
-    if (!hostPart || !portsPart) {
-      throw new Error('Invalid Dgraph connection string format. Expected dgraph://host:port or dgraph://host:grpc_port,http_port');
-    }
-
-    let grpcPort: string;
-    let httpPort: string;
-
-    // Check if ports are comma-separated (grpc,http)
-    if (portsPart.includes(',')) {
-      const [grpc, http] = portsPart.split(',');
-      grpcPort = grpc;
-      httpPort = http;
-    } else {
-      // Single port - assume it's gRPC port and derive HTTP port
-      const port = parseInt(portsPart);
-      grpcPort = portsPart;
-      // Common convention: HTTP port is gRPC port - 1000 (e.g., 9080 -> 8080)
-      httpPort = (port - 1000).toString();
-    }
-
-    return {
-      grpcAddress: `${hostPart}:${grpcPort}`,
-      httpAddress: `http://${hostPart}:${httpPort}`,
-    };
+    return this.client;
   }
 
   async initialize(): Promise<void> {
+    // Connect to Dgraph using the connection string
+    this.client = await dgraph.open(this.config.connectionString);
     const schema = `
       type Entity {
         name: string @index(exact, term) .
@@ -76,11 +49,11 @@ export class DgraphService {
 
     const operation = new Operation();
     operation.setSchema(schema);
-    await this.client.alter(operation);
+    await this.ensureClient().alter(operation);
   }
 
   async saveEntity(entity: Entity): Promise<string> {
-    const txn = this.client.newTxn();
+    const txn = this.ensureClient().newTxn();
     try {
       const mutation = new Mutation();
       const entityData = {
@@ -109,7 +82,7 @@ export class DgraphService {
   }
 
   async saveMemory(memory: Memory, entityUids: string[]): Promise<string> {
-    const txn = this.client.newTxn();
+    const txn = this.ensureClient().newTxn();
     try {
       const mutation = new Mutation();
       const memoryData = {
@@ -150,7 +123,7 @@ export class DgraphService {
       }
     `;
 
-    const txn = this.client.newTxn();
+    const txn = this.ensureClient().newTxn();
     const response = await txn.queryWithVars(query, { $names: JSON.stringify(names) });
     const result = response.getJson();
     return result.entities || [];
@@ -175,7 +148,7 @@ export class DgraphService {
       }
     `;
 
-    const txn = this.client.newTxn();
+    const txn = this.ensureClient().newTxn();
     const response = await txn.queryWithVars(query, { 
       $embedding: JSON.stringify(embedding),
       $limit: limit.toString()
@@ -185,6 +158,9 @@ export class DgraphService {
   }
 
   async close(): Promise<void> {
-    await this.client.close();
+    if (this.client) {
+      await this.client.close();
+      this.client = null;
+    }
   }
 }
