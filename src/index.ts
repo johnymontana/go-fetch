@@ -13,8 +13,7 @@ import type { DgraphConfig, AIConfig } from './types/index.js';
 // Load environment variables
 const config = {
   dgraph: {
-    alphaUrl: process.env.DGRAPH_ALPHA_URL || 'http://localhost:8080',
-    grpcUrl: process.env.DGRAPH_GRPC_URL || 'localhost:9080',
+    connectionString: process.env.DGRAPH_CONNECTION_STRING || 'dgraph://localhost:9080',
   } as DgraphConfig,
   ai: {
     provider: process.env.AI_PROVIDER || 'openai',

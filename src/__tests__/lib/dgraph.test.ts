@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { mockDgraphConfig, mockEntity, mockMemory } from '../../../tests/fixtures/test-data.js';
+import { mockDgraphConfig, mockEntity, mockMemory } from '../../test-fixtures/test-data.js';
 import { DgraphService } from '../../lib/dgraph.js';
 
 // Mock dgraph-js
@@ -36,6 +36,28 @@ jest.mock('dgraph-js', () => ({
 
 describe('DgraphService', () => {
   let dgraphService: DgraphService;
+
+  describe('constructor', () => {
+    it('should parse single port connection string', () => {
+      const config = { connectionString: 'dgraph://localhost:9080' };
+      expect(() => new DgraphService(config)).not.toThrow();
+    });
+
+    it('should parse dual port connection string', () => {
+      const config = { connectionString: 'dgraph://localhost:9080,8080' };
+      expect(() => new DgraphService(config)).not.toThrow();
+    });
+
+    it('should throw error for invalid connection string format', () => {
+      const config = { connectionString: 'http://localhost:8080' };
+      expect(() => new DgraphService(config)).toThrow('Invalid Dgraph connection string. Must start with dgraph://');
+    });
+
+    it('should throw error for malformed connection string', () => {
+      const config = { connectionString: 'dgraph://localhost' };
+      expect(() => new DgraphService(config)).toThrow('Invalid Dgraph connection string format');
+    });
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();

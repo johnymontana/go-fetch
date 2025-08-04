@@ -15,7 +15,6 @@ export default {
   },
   testMatch: [
     '<rootDir>/src/**/__tests__/**/*.test.ts',
-    '<rootDir>/tests/**/*.test.ts',
   ],
   collectCoverageFrom: [
     'src/**/*.ts',
@@ -24,6 +23,6 @@ export default {
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
+  setupFilesAfterEnv: ['<rootDir>/src/test-setup.ts'],
   testTimeout: 10000,
 };

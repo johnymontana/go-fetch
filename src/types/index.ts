@@ -22,8 +22,7 @@ export interface SearchResult {
 }
 
 export interface DgraphConfig {
-  alphaUrl: string;
-  grpcUrl: string;
+  connectionString: string;
 }
 
 export interface AIConfig {

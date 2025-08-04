@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { mockSearchResults, mockEmbedding } from '../../../tests/fixtures/test-data.js';
+import { mockSearchResults, mockEmbedding } from '../../test-fixtures/test-data.js';
 import { GraphMemorySearchTool } from '../../tools/graph-memory-search.js';
 
 // Mock the dependencies

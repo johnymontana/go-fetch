@@ -5,8 +5,7 @@
     }
   },
   "env": {
-    "DGRAPH_ALPHA_URL": "@dgraph_alpha_url",
-    "DGRAPH_GRPC_URL": "@dgraph_grpc_url",
+    "DGRAPH_CONNECTION_STRING": "@dgraph_connection_string",
     "AI_PROVIDER": "@ai_provider",
     "OPENAI_API_KEY": "@openai_api_key",
     "ANTHROPIC_API_KEY": "@anthropic_api_key",

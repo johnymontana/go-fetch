@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { mockAIConfig, mockExtractedEntities } from '../../../tests/fixtures/test-data.js';
+import { mockAIConfig, mockExtractedEntities } from '../../test-fixtures/test-data.js';
 import { AIService } from '../../lib/ai.js';
 
 // Mock the AI SDK modules

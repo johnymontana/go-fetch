@@ -14,8 +14,16 @@ An MCP (Model Context Protocol) server that provides graph-based memory tools fo
 ## Prerequisites
 
 - Node.js 20+
-- Dgraph database instance
+- Dgraph database instance (local or cloud)
 - OpenAI or Anthropic API key
+
+## Dgraph Connection Formats
+
+The project supports flexible Dgraph connection string formats:
+
+- **Single port**: `dgraph://localhost:9080` (HTTP port auto-derived as gRPC-1000)
+- **Dual port**: `dgraph://localhost:9080,8080` (explicit gRPC and HTTP ports)
+- **Remote**: `dgraph://dgraph.example.com:443,443` (for cloud instances)
 
 ## Setup
 
@@ -31,8 +39,7 @@ An MCP (Model Context Protocol) server that provides graph-based memory tools fo
    
    Edit `.env` with your configuration:
    ```env
-   DGRAPH_ALPHA_URL=http://localhost:8080
-   DGRAPH_GRPC_URL=localhost:9080
+   DGRAPH_CONNECTION_STRING=dgraph://localhost:9080
    AI_PROVIDER=openai
    OPENAI_API_KEY=your_openai_api_key
    EMBEDDING_MODEL=text-embedding-3-small

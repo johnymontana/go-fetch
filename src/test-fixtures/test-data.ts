@@ -1,8 +1,7 @@
 import type { Entity, Memory, DgraphConfig, AIConfig } from '../../src/types/index.js';
 
 export const mockDgraphConfig: DgraphConfig = {
-  alphaUrl: 'http://localhost:8080',
-  grpcUrl: 'localhost:9080',
+  connectionString: 'dgraph://localhost:9080',
 };
 
 export const mockAIConfig: AIConfig = {

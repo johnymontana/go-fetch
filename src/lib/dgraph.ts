@@ -5,8 +5,44 @@ export class DgraphService {
   private client: DgraphClient;
 
   constructor(config: DgraphConfig) {
-    const clientStub = new DgraphClientStub(config.grpcUrl);
+    const parsedUrl = this.parseConnectionString(config.connectionString);
+    const clientStub = new DgraphClientStub(parsedUrl.grpcAddress);
     this.client = new DgraphClient(clientStub);
+  }
+
+  private parseConnectionString(connectionString: string): { grpcAddress: string; httpAddress: string } {
+    // Parse dgraph://host:port or dgraph://host:grpc_port,http_port format
+    if (!connectionString.startsWith('dgraph://')) {
+      throw new Error('Invalid Dgraph connection string. Must start with dgraph://');
+    }
+
+    const url = connectionString.replace('dgraph://', '');
+    const [hostPart, portsPart] = url.split(':');
+    
+    if (!hostPart || !portsPart) {
+      throw new Error('Invalid Dgraph connection string format. Expected dgraph://host:port or dgraph://host:grpc_port,http_port');
+    }
+
+    let grpcPort: string;
+    let httpPort: string;
+
+    // Check if ports are comma-separated (grpc,http)
+    if (portsPart.includes(',')) {
+      const [grpc, http] = portsPart.split(',');
+      grpcPort = grpc;
+      httpPort = http;
+    } else {
+      // Single port - assume it's gRPC port and derive HTTP port
+      const port = parseInt(portsPart);
+      grpcPort = portsPart;
+      // Common convention: HTTP port is gRPC port - 1000 (e.g., 9080 -> 8080)
+      httpPort = (port - 1000).toString();
+    }
+
+    return {
+      grpcAddress: `${hostPart}:${grpcPort}`,
+      httpAddress: `http://${hostPart}:${httpPort}`,
+    };
   }
 
   async initialize(): Promise<void> {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { mockEntity, mockExtractedEntities, mockEmbedding } from '../../../tests/fixtures/test-data.js';
+import { mockEntity, mockExtractedEntities, mockEmbedding } from '../../test-fixtures/test-data.js';
 import { SaveUserMessageTool } from '../../tools/save-user-message.js';
 
 // Mock the dependencies

@@ -65,8 +65,13 @@ tests/
 2. `graph_memory_search`: Query → Embedding → Vector Search → Memory Retrieval → AI Summary
 
 ### Environment Variables
-Required: `DGRAPH_ALPHA_URL`, `DGRAPH_GRPC_URL`, `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
+Required: `DGRAPH_CONNECTION_STRING`, `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
 Optional: `AI_PROVIDER`, `EMBEDDING_MODEL`, `LLM_MODEL`
+
+### Dgraph Connection String Format
+- Single port: `dgraph://localhost:9080` (HTTP auto-derived as gRPC-1000)
+- Dual port: `dgraph://localhost:9080,8080` (explicit gRPC,HTTP ports)
+- Cloud: `dgraph://your-instance.cloud:443,443`
 
 ### Dgraph Schema
 - Entity nodes with vector embeddings for semantic search
