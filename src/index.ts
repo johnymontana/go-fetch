@@ -1,3 +1,4 @@
+import dotenv from 'dotenv';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -9,6 +10,9 @@ import { AIService } from './lib/ai.js';
 import { SaveUserMessageTool } from './tools/save-user-message.js';
 import { GraphMemorySearchTool } from './tools/graph-memory-search.js';
 import type { DgraphConfig, AIConfig } from './types/index.js';
+
+// Load environment variables from .env file
+dotenv.config();
 
 // Load environment variables
 const config = {
