@@ -44,12 +44,12 @@ describe('AIService', () => {
 
   describe('constructor', () => {
     it('should initialize with OpenAI provider', () => {
-      const service = new AIService({ ...mockAIConfig, provider: 'openai' });
+      new AIService({ ...mockAIConfig, provider: 'openai' });
       expect(mockCreateOpenAI).toHaveBeenCalledWith({ apiKey: 'test-api-key' });
     });
 
     it('should initialize with Anthropic provider', () => {
-      const service = new AIService({ ...mockAIConfig, provider: 'anthropic' });
+      new AIService({ ...mockAIConfig, provider: 'anthropic' });
       expect(mockCreateAnthropic).toHaveBeenCalledWith({ apiKey: 'test-api-key' });
     });
 

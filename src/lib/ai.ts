@@ -1,16 +1,8 @@
-import { generateObject, generateText, embed } from 'ai';
+import { generateText, embed } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
-import { z } from 'zod';
 import type { AIConfig } from '../types/index.js';
 
-const EntitySchema = z.object({
-  entities: z.array(z.object({
-    name: z.string(),
-    type: z.string(),
-    description: z.string().optional(),
-  })),
-});
 
 export class AIService {
   private config: AIConfig;

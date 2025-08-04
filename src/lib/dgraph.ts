@@ -1,4 +1,4 @@
-import { DgraphClient, DgraphClientStub, Mutation, Operation, Request } from 'dgraph-js';
+import { DgraphClient, DgraphClientStub, Mutation, Operation } from 'dgraph-js';
 import type { DgraphConfig, Entity, Memory } from '../types/index.js';
 
 export class DgraphService {

@@ -1,6 +1,6 @@
 import { DgraphService } from '../lib/dgraph.js';
 import { AIService } from '../lib/ai.js';
-import type { Entity, SearchResult } from '../types/index.js';
+import type { SearchResult } from '../types/index.js';
 
 export interface GraphMemorySearchArgs {
   query: string;
@@ -9,8 +9,8 @@ export interface GraphMemorySearchArgs {
 
 export class GraphMemorySearchTool {
   constructor(
-    private dgraphService: DgraphService,
-    private aiService: AIService
+    private readonly dgraphService: DgraphService,
+    private readonly aiService: AIService
   ) {}
 
   async execute(args: GraphMemorySearchArgs): Promise<string> {

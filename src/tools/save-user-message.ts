@@ -8,8 +8,8 @@ export interface SaveUserMessageArgs {
 
 export class SaveUserMessageTool {
   constructor(
-    private dgraphService: DgraphService,
-    private aiService: AIService
+    private readonly dgraphService: DgraphService,
+    private readonly aiService: AIService
   ) {}
 
   async execute(args: SaveUserMessageArgs): Promise<string> {
