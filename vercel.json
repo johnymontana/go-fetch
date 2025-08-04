@@ -1,0 +1,21 @@
+{
+  "functions": {
+    "src/index.ts": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "env": {
+    "DGRAPH_ALPHA_URL": "@dgraph_alpha_url",
+    "DGRAPH_GRPC_URL": "@dgraph_grpc_url",
+    "AI_PROVIDER": "@ai_provider",
+    "OPENAI_API_KEY": "@openai_api_key",
+    "ANTHROPIC_API_KEY": "@anthropic_api_key",
+    "EMBEDDING_MODEL": "@embedding_model",
+    "LLM_MODEL": "@llm_model"
+  },
+  "build": {
+    "env": {
+      "NODE_ENV": "production"
+    }
+  }
+}

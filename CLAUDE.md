@@ -1,0 +1,65 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+Graph Fetch is a TypeScript MCP (Model Context Protocol) server that provides graph-based memory tools for AI agents using Dgraph as the backend database. The server exposes two main tools for entity extraction, storage, and semantic search through the MCP protocol.
+
+## Development Commands
+
+```bash
+# Build the TypeScript project
+npm run build
+
+# Run in development mode with hot reload
+npm run dev
+
+# Start production server
+npm start
+
+# Lint code and fix issues
+npm run lint
+npm run lint:fix
+
+# Type checking without emitting files
+npm run type-check
+```
+
+## Project Structure
+
+```
+src/
+├── lib/           # Core services
+│   ├── dgraph.ts  # Dgraph database operations and schema
+│   └── ai.ts      # AI operations (LLM, embeddings)
+├── tools/         # MCP tool implementations
+│   ├── save-user-message.ts
+│   └── graph-memory-search.ts
+├── types/         # TypeScript type definitions
+└── index.ts       # MCP server setup and entry point
+```
+
+## Architecture Notes
+
+### Core Components
+- **DgraphService**: Handles all database operations, schema initialization, and vector searches
+- **AIService**: Manages LLM calls for entity extraction and embedding generation using Vercel AI SDK
+- **MCP Tools**: Implements the two main tools as classes with execute methods
+
+### Data Flow
+1. `save_user_message`: Message → Entity Extraction (LLM) → Embeddings → Dgraph Storage
+2. `graph_memory_search`: Query → Embedding → Vector Search → Memory Retrieval → AI Summary
+
+### Environment Variables
+Required: `DGRAPH_ALPHA_URL`, `DGRAPH_GRPC_URL`, `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
+Optional: `AI_PROVIDER`, `EMBEDDING_MODEL`, `LLM_MODEL`
+
+### Dgraph Schema
+- Entity nodes with vector embeddings for semantic search
+- Memory nodes linked to entities via relationships
+- HNSW vector index for efficient similarity search
+
+## Deployment
+
+The project is configured for Vercel deployment with `vercel.json`. Environment variables must be set in the Vercel dashboard. Requires a hosted Dgraph instance (Dgraph Cloud recommended for production).

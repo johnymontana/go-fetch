@@ -1,0 +1,117 @@
+# Graph Fetch - MCP Server for Graph-Based Memory
+
+An MCP (Model Context Protocol) server that provides graph-based memory tools for AI agents using Dgraph as the backend database. Built with TypeScript, Vercel AI SDK, and the Vercel MCP adapter.
+
+## Features
+
+- **Entity Extraction**: Automatically extracts entities from user messages using LLMs
+- **Vector Search**: Semantic search through memories using embeddings
+- **Graph Relationships**: Stores entities and memories with relationships in Dgraph
+- **Two MCP Tools**:
+  - `save_user_message`: Process and save messages with entity extraction
+  - `graph_memory_search`: Vector-based search through stored memories
+
+## Prerequisites
+
+- Node.js 20+
+- Dgraph database instance
+- OpenAI or Anthropic API key
+
+## Setup
+
+1. **Clone and install dependencies**:
+   ```bash
+   npm install
+   ```
+
+2. **Configure environment variables**:
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Edit `.env` with your configuration:
+   ```env
+   DGRAPH_ALPHA_URL=http://localhost:8080
+   DGRAPH_GRPC_URL=localhost:9080
+   AI_PROVIDER=openai
+   OPENAI_API_KEY=your_openai_api_key
+   EMBEDDING_MODEL=text-embedding-3-small
+   LLM_MODEL=gpt-4o-mini
+   ```
+
+3. **Start Dgraph** (if running locally):
+   ```bash
+   docker run --rm -it -p 8080:8080 -p 9080:9080 -p 8000:8000 dgraph/standalone:latest
+   ```
+
+## Development
+
+```bash
+# Build the project
+npm run build
+
+# Run in development mode
+npm run dev
+
+# Start production server
+npm start
+
+# Lint code
+npm run lint
+
+# Type check
+npm run type-check
+```
+
+## Deployment
+
+### Vercel
+
+1. Install Vercel CLI: `npm i -g vercel`
+2. Deploy: `vercel`
+3. Set environment variables in Vercel dashboard
+4. Configure Dgraph Cloud or hosted Dgraph instance
+
+## MCP Tools
+
+### save_user_message
+
+Processes a user message, extracts entities, and saves them to Dgraph with relationships.
+
+**Parameters**:
+- `message` (string): The user message to process
+
+**Example**:
+```json
+{
+  "message": "I met John Smith at Google headquarters in Mountain View yesterday."
+}
+```
+
+### graph_memory_search
+
+Searches for relevant memories using vector similarity on entity embeddings.
+
+**Parameters**:
+- `query` (string): Search query
+- `limit` (number, optional): Max results (default: 10)
+
+**Example**:
+```json
+{
+  "query": "meetings with Google employees",
+  "limit": 5
+}
+```
+
+## Architecture
+
+- **src/lib/dgraph.ts**: Dgraph database operations and schema management
+- **src/lib/ai.ts**: AI operations (entity extraction, embeddings, summaries)
+- **src/tools/**: MCP tool implementations
+- **src/types/**: TypeScript type definitions
+- **src/index.ts**: MCP server setup and configuration
+
+## License
+
+ISC
