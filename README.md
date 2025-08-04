@@ -82,6 +82,116 @@ npm run test:coverage
 
 # Run tests for CI
 npm run test:ci
+
+# Launch MCP Inspector for testing
+npm run inspector
+
+# Quick MCP server test
+npm run test:mcp
+```
+
+## Testing the MCP Server
+
+### Using MCP Inspector
+
+The [MCP Inspector](https://github.com/modelcontextprotocol/inspector) is a debugging tool that allows you to test and interact with your MCP server directly. It provides a web interface to call tools, inspect responses, and debug your server implementation.
+
+#### Prerequisites
+
+1. **Install MCP Inspector**:
+   ```bash
+   npm install -g @modelcontextprotocol/inspector
+   ```
+
+2. **Start Dgraph** (if testing with real database):
+   ```bash
+   docker run --rm -it -p 8080:8080 -p 9080:9080 -p 8000:8000 dgraph/standalone:latest
+   ```
+
+3. **Configure your API keys** in `.env`:
+   ```env
+   OPENAI_API_KEY=your_actual_openai_api_key
+   # or
+   ANTHROPIC_API_KEY=your_actual_anthropic_api_key
+   ```
+
+#### Running the Inspector
+
+1. **Start the MCP Inspector**:
+   ```bash
+   npx @modelcontextprotocol/inspector
+   ```
+
+2. **Configure the connection** in the inspector web interface:
+   - **Server Command**: `node`
+   - **Server Arguments**: `["dist/index.js"]`
+   - **Working Directory**: `/path/to/your/graph-fetch/project`
+
+   Or for development mode:
+   - **Server Command**: `npm`
+   - **Server Arguments**: `["run", "dev"]`
+   - **Working Directory**: `/path/to/your/graph-fetch/project`
+
+3. **Test the tools**:
+
+   **Save User Message Tool**:
+   ```json
+   {
+     "message": "I met John Smith at Google headquarters in Mountain View yesterday to discuss the new AI project."
+   }
+   ```
+
+   **Graph Memory Search Tool**:
+   ```json
+   {
+     "query": "meetings with Google employees",
+     "limit": 5
+   }
+   ```
+
+#### Expected Behavior
+
+- **save_user_message**: Should extract entities (John Smith, Google, Mountain View, AI project) and save them to Dgraph with relationships
+- **graph_memory_search**: Should return semantically similar memories based on vector embeddings
+
+#### Troubleshooting
+
+- **Connection issues**: Ensure the server builds successfully with `npm run build`
+- **API errors**: Verify your AI provider API key is correctly set in `.env`
+- **Database errors**: Make sure Dgraph is running and accessible on the configured port (`docker run --rm -it -p 8080:8080 -p 9080:9080 -p 8000:8000 dgraph/standalone:latest`)
+- **Tool errors**: Check the inspector console and server logs for detailed error messages
+- **Server startup fails**: The MCP server requires Dgraph to be running to initialize. Start Dgraph before testing the server
+
+### Manual Testing
+
+You can also test the server manually using stdio:
+
+```bash
+# Start Dgraph (in separate terminal)
+docker run --rm -it -p 8080:8080 -p 9080:9080 -p 8000:8000 dgraph/standalone:latest
+
+# Build and start the server (in main terminal)
+npm run build
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}' | node dist/index.js
+```
+
+### Quick Testing Workflow
+
+Here's a complete workflow to test the MCP server:
+
+```bash
+# 1. Start Dgraph
+docker run --rm -it -p 8080:8080 -p 9080:9080 -p 8000:8000 dgraph/standalone:latest
+
+# 2. In a new terminal, build the project
+npm run build
+
+# 3. Start MCP Inspector
+npm run inspector
+
+# 4. Open the inspector in your browser (usually http://localhost:3000)
+# 5. Configure connection with: node dist/index.js
+# 6. Test the tools with sample data
 ```
 
 ## Testing

@@ -78,6 +78,41 @@ Optional: `AI_PROVIDER`, `EMBEDDING_MODEL`, `LLM_MODEL`
 - Memory nodes linked to entities via relationships
 - HNSW vector index for efficient similarity search
 
+## Testing with MCP Inspector
+
+### Quick Setup
+```bash
+# 1. Start Dgraph
+docker run --rm -it -p 8080:8080 -p 9080:9080 -p 8000:8000 dgraph/standalone:latest
+
+# 2. Build project
+npm run build
+
+# 3. Launch MCP Inspector
+npm run inspector
+```
+
+### Inspector Configuration
+- **Server Command**: `node`
+- **Server Arguments**: `["dist/index.js"]`
+- **Working Directory**: Project root path
+
+### Test Examples
+**Save User Message**:
+```json
+{
+  "message": "I met John Smith at Google headquarters in Mountain View yesterday to discuss the new AI project."
+}
+```
+
+**Graph Memory Search**:
+```json
+{
+  "query": "meetings with Google employees",
+  "limit": 5
+}
+```
+
 ## Testing
 
 The project includes comprehensive testing with Jest:
