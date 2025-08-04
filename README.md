@@ -1,5 +1,7 @@
 # Graph Fetch - MCP Server for Graph-Based Memory
 
+![fetch logo](img/fetch.png)
+
 An MCP (Model Context Protocol) server that provides graph-based memory tools for AI agents using Dgraph as the backend database. Built with TypeScript, Vercel AI SDK, and the Vercel MCP adapter.
 
 ## Features
