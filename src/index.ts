@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
+import { createServer } from 'http';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -149,34 +150,144 @@ async function initialize(): Promise<void> {
   }
 }
 
+// Helper function to get client IP
+function getClientIP(req: any): string {
+  return req.headers['x-forwarded-for'] ||
+         req.headers['x-real-ip'] ||
+         req.connection?.remoteAddress ||
+         req.socket?.remoteAddress ||
+         'unknown';
+}
+
+// Helper function to format log timestamp
+function getTimestamp(): string {
+  return new Date().toISOString();
+}
+
 // Start the server
 async function startServer(): Promise<void> {
   await initialize();
   
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+  const httpServer = createServer((req, res) => {
+    const startTime = Date.now();
+    const clientIP = getClientIP(req);
+    const requestId = Math.random().toString(36).substring(2, 15);
+    
+    // Log incoming request
+    console.error(`[${getTimestamp()}] [${requestId}] Incoming request: ${req.method} ${req.url} from ${clientIP}`);
+    console.error(`[${getTimestamp()}] [${requestId}] Headers:`, JSON.stringify(req.headers, null, 2));
+    
+    // Add response logging
+    const originalEnd = res.end;
+    res.end = function(chunk?: any, encoding?: any) {
+      const duration = Date.now() - startTime;
+      console.error(`[${getTimestamp()}] [${requestId}] Response completed: ${res.statusCode} in ${duration}ms`);
+      return originalEnd.call(this, chunk, encoding);
+    };
+    
+    if (req.url === '/message' || req.url?.startsWith('/message?')) {
+      console.error(`[${getTimestamp()}] [${requestId}] Handling MCP request: ${req.method} ${req.url}`);
+      
+      try {
+        const transport = new SSEServerTransport('/message', res);
+        
+        // Log transport connection
+        console.error(`[${getTimestamp()}] [${requestId}] SSE transport created, connecting to MCP server`);
+        
+        server.connect(transport).then(() => {
+          console.error(`[${getTimestamp()}] [${requestId}] MCP server connected successfully`);
+        }).catch((error) => {
+          console.error(`[${getTimestamp()}] [${requestId}] MCP server connection failed:`, error);
+        });
+        
+      } catch (error) {
+        console.error(`[${getTimestamp()}] [${requestId}] Failed to create SSE transport:`, error);
+        res.writeHead(500);
+        res.end('Internal Server Error');
+      }
+    } else {
+      console.error(`[${getTimestamp()}] [${requestId}] Route not found: ${req.method} ${req.url}`);
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('Not Found');
+    }
+  });
   
-  console.error('Graph Fetch MCP Server is ready!');
-  console.error('Available tools: save_user_message, graph_memory_search');
+  // Add server event logging
+  httpServer.on('connection', (socket) => {
+    const clientIP = socket.remoteAddress;
+    console.error(`[${getTimestamp()}] New connection established from ${clientIP}`);
+    
+    socket.on('close', () => {
+      console.error(`[${getTimestamp()}] Connection closed from ${clientIP}`);
+    });
+    
+    socket.on('error', (error) => {
+      console.error(`[${getTimestamp()}] Socket error from ${clientIP}:`, error);
+    });
+  });
+  
+  httpServer.on('error', (error) => {
+    console.error(`[${getTimestamp()}] HTTP server error:`, error);
+  });
+  
+  httpServer.on('clientError', (error, socket) => {
+    console.error(`[${getTimestamp()}] Client error:`, error);
+    if (socket.writable) {
+      socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+    }
+  });
+  
+  const port = process.env.PORT || 3000;
+  httpServer.listen(port, () => {
+    console.error(`[${getTimestamp()}] Graph Fetch MCP Server is ready on port ${port}!`);
+    console.error(`[${getTimestamp()}] Available tools: save_user_message, graph_memory_search`);
+    console.error(`[${getTimestamp()}] Connect to: http://localhost:${port}/message`);
+    console.error(`[${getTimestamp()}] Server process ID: ${process.pid}`);
+  });
 }
 
 // Handle graceful shutdown
 process.on('SIGINT', async () => {
-  console.error('Shutting down gracefully...');
-  await dgraphService.close();
+  console.error(`[${getTimestamp()}] Received SIGINT, shutting down gracefully...`);
+  try {
+    await dgraphService.close();
+    console.error(`[${getTimestamp()}] Dgraph connection closed successfully`);
+  } catch (error) {
+    console.error(`[${getTimestamp()}] Error closing Dgraph connection:`, error);
+  }
+  console.error(`[${getTimestamp()}] Server shutdown complete`);
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
-  console.error('Shutting down gracefully...');
-  await dgraphService.close();
+  console.error(`[${getTimestamp()}] Received SIGTERM, shutting down gracefully...`);
+  try {
+    await dgraphService.close();
+    console.error(`[${getTimestamp()}] Dgraph connection closed successfully`);
+  } catch (error) {
+    console.error(`[${getTimestamp()}] Error closing Dgraph connection:`, error);
+  }
+  console.error(`[${getTimestamp()}] Server shutdown complete`);
   process.exit(0);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error(`[${getTimestamp()}] Uncaught Exception:`, error);
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error(`[${getTimestamp()}] Unhandled Rejection at:`, promise, 'reason:', reason);
+  process.exit(1);
 });
 
 // Start server if running directly
 if (import.meta.url === `file://${process.argv[1]}`) {
+  console.error(`[${getTimestamp()}] Starting Graph Fetch MCP Server...`);
   startServer().catch((error) => {
-    console.error('Failed to start server:', error);
+    console.error(`[${getTimestamp()}] Failed to start server:`, error);
     process.exit(1);
   });
 }
