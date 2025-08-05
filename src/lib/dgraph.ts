@@ -1,6 +1,6 @@
-import * as dgraph from 'dgraph-js';
-import { Mutation, Operation } from 'dgraph-js';
-import type { DgraphConfig, Entity, Memory } from '../types/index.js';
+import * as dgraph from "dgraph-js";
+import { Mutation, Operation } from "dgraph-js";
+import type { DgraphConfig, Entity, Memory } from "../types/index.js";
 
 export class DgraphService {
   private client: dgraph.DgraphClient | null = null;
@@ -11,7 +11,9 @@ export class DgraphService {
 
   private ensureClient(): dgraph.DgraphClient {
     if (!this.client) {
-      throw new Error('DgraphService not initialized. Call initialize() first.');
+      throw new Error(
+        "DgraphService not initialized. Call initialize() first.",
+      );
     }
     return this.client;
   }
@@ -20,31 +22,31 @@ export class DgraphService {
     // Connect to Dgraph using the connection string
     this.client = await dgraph.open(this.config.connectionString);
     const schema = `
+      name: string @index(exact, term) .
+      type: string @index(exact) .
+      embedding: float32vector @index(hnsw(metric: "cosine")) .
+      description: string .
+      createdAt: datetime .
+      memories: [uid] @reverse .
+      content: string @index(fulltext) .
+      timestamp: datetime @index(hour) .
+      entities: [uid] .
+
       type Entity {
-        name: string @index(exact, term) .
-        type: string @index(exact) .
-        embedding: [float] @index(hnsw(metric: "cosine", exponent: 4, efConstruction: 128, efSearch: 64)) .
-        description: string .
-        createdAt: datetime .
-        memories: [uid] @reverse .
+        name
+        type
+        embedding
+        description
+        createdAt
+        memories
       }
 
       type Memory {
-        content: string @index(fulltext) .
-        timestamp: datetime @index(hour) .
-        embedding: [float] .
-        entities: [uid] .
+        content
+        timestamp
+        embedding
+        entities
       }
-
-      name: string .
-      type: string .
-      embedding: [float] .
-      description: string .
-      createdAt: datetime .
-      content: string .
-      timestamp: datetime .
-      entities: [uid] .
-      memories: [uid] .
     `;
 
     const operation = new Operation();
@@ -57,12 +59,12 @@ export class DgraphService {
     try {
       const mutation = new Mutation();
       const entityData = {
-        uid: '_:entity',
-        'dgraph.type': 'Entity',
+        uid: "_:entity",
+        "dgraph.type": "Entity",
         name: entity.name,
         type: entity.type,
         embedding: entity.embedding || [],
-        description: entity.description || '',
+        description: entity.description || "",
         createdAt: entity.createdAt,
       };
 
@@ -70,9 +72,9 @@ export class DgraphService {
       const response = await txn.mutate(mutation);
       await txn.commit();
 
-      const uid = response.getUidsMap().get('entity');
+      const uid = response.getUidsMap().get("entity");
       if (!uid) {
-        throw new Error('Failed to create entity');
+        throw new Error("Failed to create entity");
       }
       return uid;
     } catch (error) {
@@ -86,21 +88,21 @@ export class DgraphService {
     try {
       const mutation = new Mutation();
       const memoryData = {
-        uid: '_:memory',
-        'dgraph.type': 'Memory',
+        uid: "_:memory",
+        "dgraph.type": "Memory",
         content: memory.content,
         timestamp: memory.timestamp,
         embedding: memory.embedding || [],
-        entities: entityUids.map(uid => ({ uid })),
+        entities: entityUids.map((uid) => ({ uid })),
       };
 
       mutation.setSetJson(memoryData);
       const response = await txn.mutate(mutation);
       await txn.commit();
 
-      const uid = response.getUidsMap().get('memory');
+      const uid = response.getUidsMap().get("memory");
       if (!uid) {
-        throw new Error('Failed to create memory');
+        throw new Error("Failed to create memory");
       }
       return uid;
     } catch (error) {
@@ -124,7 +126,9 @@ export class DgraphService {
     `;
 
     const txn = this.ensureClient().newTxn();
-    const response = await txn.queryWithVars(query, { $names: JSON.stringify(names) });
+    const response = await txn.queryWithVars(query, {
+      $names: JSON.stringify(names),
+    });
     const result = response.getJson();
     return result.entities || [];
   }
@@ -149,9 +153,9 @@ export class DgraphService {
     `;
 
     const txn = this.ensureClient().newTxn();
-    const response = await txn.queryWithVars(query, { 
+    const response = await txn.queryWithVars(query, {
       $embedding: JSON.stringify(embedding),
-      $limit: limit.toString()
+      $limit: limit.toString(),
     });
     const result = response.getJson();
     return result.entities || [];
