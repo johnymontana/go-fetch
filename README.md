@@ -13,6 +13,10 @@ An MCP (Model Context Protocol) server that provides graph-based memory tools fo
   - `save_user_message`: Process and save messages with entity extraction
   - `graph_memory_search`: Vector-based search through stored memories
 
+## Graph Data Model
+
+![fetch data model](img/fetch-schema.png)
+
 ## Prerequisites
 
 - Node.js 20+

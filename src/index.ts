@@ -1,7 +1,8 @@
 import dotenv from 'dotenv';
-import { createServer } from 'http';
+import express from 'express';
+import cors from 'cors';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -151,10 +152,12 @@ async function initialize(): Promise<void> {
 }
 
 // Helper function to get client IP
-function getClientIP(req: any): string {
-  return req.headers['x-forwarded-for'] ||
-         req.headers['x-real-ip'] ||
-         req.connection?.remoteAddress ||
+function getClientIP(req: express.Request): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  const realIp = req.headers['x-real-ip'];
+  
+  return (Array.isArray(forwarded) ? forwarded[0] : forwarded) ||
+         (Array.isArray(realIp) ? realIp[0] : realIp) ||
          req.socket?.remoteAddress ||
          'unknown';
 }
@@ -168,12 +171,23 @@ function getTimestamp(): string {
 async function startServer(): Promise<void> {
   await initialize();
   
-  const httpServer = createServer((req, res) => {
+  console.error(`[${getTimestamp()}] Creating Express app...`);
+  
+  const app = express();
+  app.use(express.json());
+  
+  // Configure CORS to expose MCP session headers
+  app.use(cors({
+    origin: '*', // Allow all origins - adjust as needed for production
+    exposedHeaders: ['Mcp-Session-Id']
+  }));
+  
+  // Add comprehensive logging middleware
+  app.use((req, res, next) => {
     const startTime = Date.now();
     const clientIP = getClientIP(req);
     const requestId = Math.random().toString(36).substring(2, 15);
     
-    // Log incoming request
     console.error(`[${getTimestamp()}] [${requestId}] Incoming request: ${req.method} ${req.url} from ${clientIP}`);
     console.error(`[${getTimestamp()}] [${requestId}] Headers:`, JSON.stringify(req.headers, null, 2));
     
@@ -185,63 +199,61 @@ async function startServer(): Promise<void> {
       return originalEnd.call(this, chunk, encoding);
     };
     
-    if (req.url === '/message' || req.url?.startsWith('/message?')) {
-      console.error(`[${getTimestamp()}] [${requestId}] Handling MCP request: ${req.method} ${req.url}`);
+    next();
+  });
+  
+  // MCP endpoint
+  app.post('/mcp', async (req, res) => {
+    console.error(`[${getTimestamp()}] Handling MCP request`);
+    
+    try {
+      const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: undefined, // Stateless mode
+      });
       
-      try {
-        const transport = new SSEServerTransport('/message', res);
-        
-        // Log transport connection
-        console.error(`[${getTimestamp()}] [${requestId}] SSE transport created, connecting to MCP server`);
-        
-        server.connect(transport).then(() => {
-          console.error(`[${getTimestamp()}] [${requestId}] MCP server connected successfully`);
-        }).catch((error) => {
-          console.error(`[${getTimestamp()}] [${requestId}] MCP server connection failed:`, error);
+      console.error(`[${getTimestamp()}] Connecting transport to MCP server`);
+      await server.connect(transport);
+      
+      console.error(`[${getTimestamp()}] Handling request with transport`);
+      await transport.handleRequest(req, res, req.body);
+      
+      res.on('close', () => {
+        console.error(`[${getTimestamp()}] Request closed, cleaning up transport`);
+        transport.close();
+        server.close();
+      });
+      
+    } catch (error) {
+      console.error(`[${getTimestamp()}] Error handling MCP request:`, error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          jsonrpc: '2.0',
+          error: {
+            code: -32603,
+            message: 'Internal server error',
+          },
+          id: null,
         });
-        
-      } catch (error) {
-        console.error(`[${getTimestamp()}] [${requestId}] Failed to create SSE transport:`, error);
-        res.writeHead(500);
-        res.end('Internal Server Error');
       }
-    } else {
-      console.error(`[${getTimestamp()}] [${requestId}] Route not found: ${req.method} ${req.url}`);
-      res.writeHead(404, { 'Content-Type': 'text/plain' });
-      res.end('Not Found');
     }
   });
   
-  // Add server event logging
-  httpServer.on('connection', (socket) => {
-    const clientIP = socket.remoteAddress;
-    console.error(`[${getTimestamp()}] New connection established from ${clientIP}`);
-    
-    socket.on('close', () => {
-      console.error(`[${getTimestamp()}] Connection closed from ${clientIP}`);
-    });
-    
-    socket.on('error', (error) => {
-      console.error(`[${getTimestamp()}] Socket error from ${clientIP}:`, error);
+  // Health check endpoint
+  app.get('/health', (req, res) => {
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      tools: ['save_user_message', 'graph_memory_search']
     });
   });
   
-  httpServer.on('error', (error) => {
-    console.error(`[${getTimestamp()}] HTTP server error:`, error);
-  });
-  
-  httpServer.on('clientError', (error, socket) => {
-    console.error(`[${getTimestamp()}] Client error:`, error);
-    if (socket.writable) {
-      socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
-    }
-  });
-  
-  const port = process.env.PORT || 3000;
-  httpServer.listen(port, () => {
+  // Start the Express server
+  const port = Number(process.env.PORT) || 3000;
+  app.listen(port, () => {
     console.error(`[${getTimestamp()}] Graph Fetch MCP Server is ready on port ${port}!`);
     console.error(`[${getTimestamp()}] Available tools: save_user_message, graph_memory_search`);
-    console.error(`[${getTimestamp()}] Connect to: http://localhost:${port}/message`);
+    console.error(`[${getTimestamp()}] MCP endpoint: http://localhost:${port}/mcp`);
+    console.error(`[${getTimestamp()}] Health check: http://localhost:${port}/health`);
     console.error(`[${getTimestamp()}] Server process ID: ${process.pid}`);
   });
 }
