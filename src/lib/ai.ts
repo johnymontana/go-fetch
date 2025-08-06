@@ -85,7 +85,8 @@ export class AIService {
     try {
       const startTime = Date.now();
       const result = await embed({
-        model: this.provider(this.config.embeddingModel) as any,
+        // FIXME: will this also work for anthropic? Need to verify
+        model: this.provider.textEmbedding(this.config.embeddingModel) as any,
         value: text,
       });
       
