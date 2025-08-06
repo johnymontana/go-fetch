@@ -39,7 +39,7 @@ export class DgraphService {
       memories: [uid] @reverse .
       content: string @index(fulltext) .
       timestamp: datetime @index(hour) .
-      entities: [uid] .
+      entities: [uid] @reverse .
       location: geo @index(geo) .
 
       type Entity {
@@ -200,7 +200,7 @@ export class DgraphService {
     console.log(`[DgraphService] Performing vector search with embedding size: ${embedding.length}, limit: ${limit}`);
     
     const query = `
-      query vectorSearch($embedding: [float!], $limit: int) {
+      query vectorSearch($embedding: string, $limit: int) {
         entities(func: similar_to(embedding, $limit, $embedding)) {
           uid
           name
