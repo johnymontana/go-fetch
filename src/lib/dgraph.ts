@@ -152,8 +152,8 @@ export class DgraphService {
     console.log(`[DgraphService] Searching for entities by names: [${names.join(', ')}]`);
     
     const query = `
-      query findEntities($names: [string!]) {
-        entities(func: eq(name, $names)) {
+      query findEntities($names: string) {
+        entities(func: anyofterms(name, $names)) {
           uid
           name
           type
@@ -167,6 +167,7 @@ export class DgraphService {
     const txn = this.ensureClient().newTxn();
     try {
       console.log(`[DgraphService] Executing entity search query...`);
+      console.log(JSON.stringify(names));
       const response = await txn.queryWithVars(query, {
         $names: JSON.stringify(names),
       });
