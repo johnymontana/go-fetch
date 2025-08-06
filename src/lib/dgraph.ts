@@ -40,6 +40,7 @@ export class DgraphService {
       content: string @index(fulltext) .
       timestamp: datetime @index(hour) .
       entities: [uid] .
+      location: geo @index(geo) .
 
       type Entity {
         name
@@ -48,6 +49,7 @@ export class DgraphService {
         description
         createdAt
         memories
+        location
       }
 
       type Memory {
@@ -88,7 +90,15 @@ export class DgraphService {
         embedding: embeddingString,
         description: entity.description || "",
         createdAt: entity.createdAt,
+      } as any;
+
+        // Only add location if coordinates are provided
+    if (entity.coordinates ) {
+      entityData.location = {
+        type: "Point",
+        coordinates: [entity.coordinates.longitude, entity.coordinates.latitude] // [lon, lat]
       };
+    }
 
       mutation.setSetJson(entityData);
       console.log(`[DgraphService] Executing entity mutation...`);

@@ -74,6 +74,7 @@ export class SaveUserMessageTool {
             name: extractedEntity.name,
             type: extractedEntity.type,
             embedding,
+            coordinates: extractedEntity.coordinates,
             description: extractedEntity.description || undefined,
             createdAt: new Date().toISOString(),
           };

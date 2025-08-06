@@ -3,6 +3,7 @@ export interface Entity {
   name: string;
   type: string;
   embedding?: number[];
+  coordinates?: any;
   description?: string | undefined;
   createdAt: string;
   memories?: Memory[];

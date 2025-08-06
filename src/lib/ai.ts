@@ -32,7 +32,7 @@ export class AIService {
     }
   }
 
-  async extractEntities(text: string): Promise<Array<{ name: string; type: string; description?: string }>> {
+  async extractEntities(text: string): Promise<Array<{ name: string; type: string; description?: string; coordinates?: any }>> {
     console.log(`[AIService] Starting entity extraction for text (${text.length} chars)`);
     console.log(`[AIService] Text preview: "${text.substring(0, 100)}${text.length > 100 ? '...' : ''}"`);
     
