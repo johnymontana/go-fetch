@@ -74,7 +74,9 @@ export class DgraphService {
   async saveEntity(entity: Entity): Promise<string> {
     console.log(`[DgraphService] Saving entity: ${entity.name} (type: ${entity.type})`);
     console.log(`[DgraphService] Entity embedding size: ${entity.embedding?.length || 0}`);
-    
+    console.log(entity);
+    const embeddingString = JSON.stringify(entity.embedding || []);
+    console.log(embeddingString);
     const txn = this.ensureClient().newTxn();
     try {
       const mutation = new Mutation();
@@ -83,7 +85,7 @@ export class DgraphService {
         "dgraph.type": "Entity",
         name: entity.name,
         type: entity.type,
-        embedding: entity.embedding || [],
+        embedding: embeddingString,
         description: entity.description || "",
         createdAt: entity.createdAt,
       };
@@ -114,7 +116,7 @@ export class DgraphService {
     console.log(`[DgraphService] Memory content length: ${memory.content.length} characters`);
     console.log(`[DgraphService] Memory embedding size: ${memory.embedding?.length || 0}`);
     console.log(`[DgraphService] Linked entity UIDs: [${entityUids.join(', ')}]`);
-    
+    console.log(memory);
     const txn = this.ensureClient().newTxn();
     try {
       const mutation = new Mutation();
@@ -123,7 +125,7 @@ export class DgraphService {
         "dgraph.type": "Memory",
         content: memory.content,
         timestamp: memory.timestamp,
-        embedding: memory.embedding || [],
+        embedding: JSON.stringify(memory.embedding || []),
         entities: entityUids.map((uid) => ({ uid })),
       };
 
