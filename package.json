@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "dev": "tsx src/index.ts",
+    "dev": "nodemon --exec tsx src/index.ts",
     "start": "node dist/index.js",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
@@ -51,6 +51,7 @@
     "@types/express": "^5.0.3",
     "@types/jest": "^30.0.0",
     "jest": "^30.0.5",
+    "nodemon": "^3.1.10",
     "ts-jest": "^29.4.1",
     "ts-node": "^10.9.2"
   }

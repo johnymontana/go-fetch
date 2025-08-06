@@ -12,7 +12,7 @@ Graph Fetch is a TypeScript MCP (Model Context Protocol) server that provides gr
 # Build the TypeScript project
 npm run build
 
-# Run in development mode with hot reload
+# Run in development mode with hot reload (using nodemon)
 npm run dev
 
 # Start production server

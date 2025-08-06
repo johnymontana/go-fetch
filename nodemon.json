@@ -1,0 +1,9 @@
+{
+  "watch": ["src"],
+  "ext": "ts,js,json",
+  "ignore": ["src/**/*.test.ts", "src/**/*.spec.ts", "dist", "node_modules"],
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "delay": 1000
+}

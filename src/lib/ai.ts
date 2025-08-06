@@ -36,12 +36,12 @@ export class AIService {
     `;
 
     try {
-      const result = await generateText({
+      const {text} = await generateText({
         model: this.provider(this.config.llmModel) as any,
-        prompt: prompt + '\n\nRespond with JSON format: {"entities": [{"name": "...", "type": "...", "description": "..."}]}',
+        prompt: prompt + '\n\nOnly respond with a valid JSON object. Do not use a backtick code block. The JSON object should be in the following format: {"entities": [{"name": "...", "type": "...", "description": "..."}]}',
       });
-
-      const parsed = JSON.parse(result.text);
+     console.error(text)
+      const parsed = JSON.parse(text);
       return parsed.entities || [];
     } catch (error) {
       console.error('Entity extraction failed:', error);
