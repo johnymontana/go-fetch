@@ -52,7 +52,7 @@ export class AIService {
       
       const {text} = await generateText({
         model: this.provider(this.config.llmModel) as any,
-        prompt: prompt + '\n\nOnly respond with a valid JSON object. Do not use a backtick code block. The JSON object should be in the following format: {"entities": [{"name": "...", "type": "...", "description": "..."}]}',
+        prompt: prompt + '\n\nOnly respond with a valid JSON object. Do not use a backtick code block. The JSON object should be in the following format: {"entities": [{"name": "...", "type": "...", "description": "..."}]} If the entity is a LOCATION, then geocode the location and return the latitude and longitude coordinates in an optional "coordinates" field.',
       });
       
       const llmTime = Date.now() - startTime;
