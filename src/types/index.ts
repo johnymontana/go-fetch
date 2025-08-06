@@ -5,6 +5,7 @@ export interface Entity {
   embedding?: number[];
   description?: string | undefined;
   createdAt: string;
+  memories?: Memory[];
 }
 
 export interface Memory {
