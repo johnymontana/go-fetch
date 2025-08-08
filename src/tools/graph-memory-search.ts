@@ -47,6 +47,7 @@ export class GraphMemorySearchTool {
           },
           similarity,
           relatedMemories: entity.memories || [],
+          relatedEntities: entity.relatedTo || [],
         };
       });
 
@@ -55,7 +56,8 @@ export class GraphMemorySearchTool {
       try {
         summary = await this.aiService.generateMemorySummary(
           searchResults.map(r => ({ name: r.entity.name, type: r.entity.type })),
-          searchResults.flatMap(r => r.relatedMemories)
+          searchResults.flatMap(r => r.relatedMemories),
+          searchResults.flatMap(r => r.relatedEntities),
         );
       } catch (error) {
         console.error('Summary generation failed:', error);
@@ -73,6 +75,7 @@ export class GraphMemorySearchTool {
           return `${index + 1}. **${result.entity.name}** (${result.entity.type})
    - Similarity: ${(result.similarity * 100).toFixed(1)}%
    - Related memories: ${memoryCount}
+   - Related entities: ${result.relatedEntities.length}
    - Recent: ${recentText}`;
         })
         .join('\n\n');

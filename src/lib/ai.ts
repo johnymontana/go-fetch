@@ -1,7 +1,7 @@
 import { generateText, embed } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
-import type { AIConfig } from '../types/index.js';
+import type { AIConfig, EntityRelationship } from '../types/index.js';
 
 
 export class AIService {
@@ -103,7 +103,7 @@ export class AIService {
     }
   }
 
-  async generateMemorySummary(entities: Array<{ name: string; type: string }>, memories: any[]): Promise<string> {
+  async generateMemorySummary(entities: Array<{ name: string; type: string }>, memories: any[], relatedEntities: any[]): Promise<string> {
     console.log(`[AIService] Generating memory summary for ${entities.length} entities and ${memories.length} memories`);
     console.log(`[AIService] Entities: ${entities.map(e => e.name).join(', ')}`);
     
@@ -146,6 +146,69 @@ export class AIService {
       const fallbackSummary = `Found entities: ${entityList}`;
       console.log(`[AIService] Using fallback summary: "${fallbackSummary}"`);
       return fallbackSummary;
+    }
+  }
+
+  async extractEntityRelationships(
+    entities: Array<{ name: string; type: string; description?: string }>,
+    memoryContent: string
+  ): Promise<EntityRelationship[]> {
+    console.log(`[AIService] Extracting relationships between ${entities.length} entities`);
+    console.log(`[AIService] Entities: ${entities.map(e => e.name).join(', ')}`);
+
+    if (entities.length < 2) {
+      console.log(`[AIService] Not enough entities to create relationships (need at least 2)`);
+      return [];
+    }
+
+    const entityList = entities.map(e => `${e.name} (${e.type})`).join(', ');
+
+    const prompt = `
+      Based on the following memory content and entities, identify relationships between the entities.
+      
+      Memory: "${memoryContent}"
+      
+      Entities: ${entityList}
+      
+      For each relationship you identify, provide:
+      1. fromEntity: the name of the first entity (exactly as provided)
+      2. toEntity: the name of the second entity (exactly as provided)  
+      3. type: a brief description of how they are related (e.g., "works with", "located in", "member of", "discussed", "collaborated on")
+      
+      Only include relationships that are clearly evident from the memory content.
+      Do not create speculative relationships.
+    `;
+
+    try {
+      console.log(`[AIService] Calling LLM for relationship extraction using model: ${this.config.llmModel}`);
+      const startTime = Date.now();
+
+      const { text } = await generateText({
+        model: this.provider(this.config.llmModel) as any,
+        prompt: prompt + '\n\nOnly respond with a valid JSON object. Do not use a backtick code block. The JSON object should be in the following format: {"relationships": [{"fromEntity": "...", "toEntity": "...", "type": "..."}]}',
+      });
+
+      const llmTime = Date.now() - startTime;
+      console.log(`[AIService] LLM response received in ${llmTime}ms`);
+      console.log(`[AIService] Raw LLM response: ${text}`);
+
+      console.log(`[AIService] Parsing JSON response...`);
+      const parsed = JSON.parse(text);
+      const relationships = parsed.relationships || [];
+      
+      console.log(`[AIService] Successfully extracted ${relationships.length} relationships`);
+      relationships.forEach((rel: EntityRelationship, index: number) => {
+        console.log(`[AIService]   ${index + 1}. ${rel.fromEntity} -> ${rel.toEntity} (${rel.type})`);
+      });
+
+      return relationships;
+    } catch (error) {
+      console.error(`[AIService] Relationship extraction failed:`, error);
+      console.error(`[AIService] Error details:`, {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      return [];
     }
   }
 }

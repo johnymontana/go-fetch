@@ -104,16 +104,37 @@ export class SaveUserMessageTool {
       const memoryUid = await this.dgraphService.saveMemory(memory, entityUids);
       console.log(`[SaveUserMessage] Memory saved successfully with UID: ${memoryUid}`);
 
+      // Generate and save relationships between entities
+      console.log(`[SaveUserMessage] Generating relationships between entities...`);
+      const relationships = await this.aiService.extractEntityRelationships(extractedEntities, message);
+      
+      if (relationships.length > 0) {
+        // Create mapping from entity names to UIDs for relationship storage
+        const entityNameToUid = new Map<string, string>();
+        allEntities.forEach(entity => {
+          if (entity.uid) {
+            entityNameToUid.set(entity.name, entity.uid);
+          }
+        });
+        
+        console.log(`[SaveUserMessage] Saving ${relationships.length} relationships to database...`);
+        await this.dgraphService.saveEntityRelationships(relationships, entityNameToUid);
+        console.log(`[SaveUserMessage] Relationships saved successfully`);
+      } else {
+        console.log(`[SaveUserMessage] No relationships found to save`);
+      }
+
       const processingTime = Date.now() - startTime;
       console.log(`[SaveUserMessage] ✅ Processing completed successfully`);
       console.log(`[SaveUserMessage] Summary:`);
       console.log(`[SaveUserMessage]   - Total entities: ${extractedEntities.length}`);
       console.log(`[SaveUserMessage]   - New entities created: ${newEntitiesCreated}`);
       console.log(`[SaveUserMessage]   - Existing entities reused: ${existingEntitiesReused}`);
+      console.log(`[SaveUserMessage]   - Relationships created: ${relationships.length}`);
       console.log(`[SaveUserMessage]   - Memory UID: ${memoryUid}`);
       console.log(`[SaveUserMessage]   - Processing time: ${processingTime}ms`);
       
-      return `Successfully saved message with ${extractedEntities.length} entities (${newEntitiesCreated} new). Memory ID: ${memoryUid}`;
+      return `Successfully saved message with ${extractedEntities.length} entities (${newEntitiesCreated} new) and ${relationships.length} relationships. Memory ID: ${memoryUid}`;
 
     } catch (error) {
       const processingTime = Date.now() - startTime;

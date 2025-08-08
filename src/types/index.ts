@@ -21,6 +21,7 @@ export interface SearchResult {
   entity: Entity;
   similarity: number;
   relatedMemories: Memory[];
+  relatedEntities: Entity[];
 }
 
 export interface DgraphConfig {
@@ -32,4 +33,10 @@ export interface AIConfig {
   apiKey: string;
   embeddingModel: string;
   llmModel: string;
+}
+
+export interface EntityRelationship {
+  fromEntity: string;
+  toEntity: string;
+  type: string;
 }

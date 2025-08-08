@@ -1,6 +1,6 @@
 import * as dgraph from "dgraph-js";
 import { Mutation, Operation } from "dgraph-js";
-import type { DgraphConfig, Entity, Memory } from "../types/index.js";
+import type { DgraphConfig, Entity, Memory, EntityRelationship } from "../types/index.js";
 
 export class DgraphService {
   private client: dgraph.DgraphClient | null = null;
@@ -41,6 +41,7 @@ export class DgraphService {
       timestamp: datetime @index(hour) .
       entities: [uid] @reverse .
       location: geo @index(geo) .
+      relatedTo: [uid] @reverse .
 
       type Entity {
         name
@@ -50,6 +51,7 @@ export class DgraphService {
         createdAt
         memories
         location
+        relatedTo
       }
 
       type Memory {
@@ -78,7 +80,6 @@ export class DgraphService {
     console.log(`[DgraphService] Entity embedding size: ${entity.embedding?.length || 0}`);
     console.log(entity);
     const embeddingString = JSON.stringify(entity.embedding || []);
-    console.log(embeddingString);
     const txn = this.ensureClient().newTxn();
     try {
       const mutation = new Mutation();
@@ -208,6 +209,22 @@ export class DgraphService {
           description
           createdAt
           embedding
+          relatedTo @facets {
+            uid
+            name
+            type
+            description
+            createdAt
+            embedding
+            relatedTo @facets {
+              uid
+              name
+              type
+              description
+              createdAt
+              embedding
+            }
+          }
           memories: ~entities {
             uid
             content
@@ -234,6 +251,59 @@ export class DgraphService {
       return entities;
     } catch (error) {
       console.error(`[DgraphService] Error in vector search:`, error);
+      throw error;
+    }
+  }
+
+  async saveEntityRelationships(
+    relationships: EntityRelationship[],
+    entityNameToUid: Map<string, string>
+  ): Promise<void> {
+    if (relationships.length === 0) {
+      console.log(`[DgraphService] No relationships to save`);
+      return;
+    }
+
+    console.log(`[DgraphService] Saving ${relationships.length} entity relationships`);
+    const txn = this.ensureClient().newTxn();
+    
+    try {
+      const mutation = new Mutation();
+      const mutations: any[] = [];
+
+      for (const relationship of relationships) {
+        const fromUid = entityNameToUid.get(relationship.fromEntity);
+        const toUid = entityNameToUid.get(relationship.toEntity);
+
+        if (!fromUid || !toUid) {
+          console.warn(`[DgraphService] Skipping relationship ${relationship.fromEntity} -> ${relationship.toEntity}: missing UID(s)`);
+          continue;
+        }
+
+        console.log(`[DgraphService] Creating relationship: ${relationship.fromEntity} [${fromUid}] -> ${relationship.toEntity} [${toUid}] (${relationship.type})`);
+        
+        mutations.push({
+          uid: fromUid,
+          relatedTo: {
+            uid: toUid,
+            "relatedTo|type": relationship.type
+          }
+        });
+      }
+
+      if (mutations.length === 0) {
+        console.log(`[DgraphService] No valid relationships to save (all skipped due to missing UIDs)`);
+        return;
+      }
+
+      mutation.setSetJson(mutations);
+      console.log(`[DgraphService] Executing relationship mutations for ${mutations.length} relationships...`);
+      await txn.mutate(mutation);
+      await txn.commit();
+      console.log(`[DgraphService] Successfully saved ${mutations.length} relationships`);
+    } catch (error) {
+      console.error(`[DgraphService] Error saving relationships:`, error);
+      await txn.discard();
       throw error;
     }
   }
