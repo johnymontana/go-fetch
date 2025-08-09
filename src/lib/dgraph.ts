@@ -42,6 +42,7 @@ export class DgraphService {
       entities: [uid] @reverse .
       location: geo @index(geo) .
       relatedTo: [uid] @reverse .
+      relatedTo.type: string @index(exact, term) .
 
       type Entity {
         name
