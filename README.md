@@ -342,7 +342,16 @@ The ingestion script processes conversations through the Graph Fetch pipeline to
 - **Evaluate entity extraction** on realistic conversation data
 - **Research long-term memory** patterns in AI agent interactions
 
-**📖 [Complete Locomo Ingestion Guide →](scripts/README.md)**
+### Querying Your Data
+
+After ingestion, explore the generated knowledge graph with powerful DQL queries:
+- **Relationship analysis**: Find support networks, advocacy patterns, community connections
+- **Entity centrality**: Discover most connected people and concepts
+- **Temporal tracking**: Analyze relationship evolution across conversations  
+- **Semantic search**: Query by relationship types like "expressed gratitude for", "member of", "advocates for"
+
+**📖 [Complete Locomo Ingestion Guide →](scripts/README.md)**  
+**🔍 [Example DQL Queries & Analysis →](eval/README.md)**
 
 ## Architecture
 
