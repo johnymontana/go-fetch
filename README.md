@@ -2,13 +2,14 @@
 
 ![fetch logo](img/fetch.png)
 
-An MCP (Model Context Protocol) server that provides graph-based memory tools for AI agents using Dgraph as the backend database. Built with TypeScript, Vercel AI SDK, and the Vercel MCP adapter.
+An MCP (Model Context Protocol) server that provides graph-based memory tools for AI agents using Dgraph as the backend database. Includes specialized tooling for ingesting and benchmarking against the Locomo-10 AI agent memory dataset. Built with TypeScript, Vercel AI SDK, and the Vercel MCP adapter.
 
 ## Features
 
 - **Entity Extraction**: Automatically extracts entities from user messages using LLMs
 - **Vector Search**: Semantic search through memories using embeddings
 - **Graph Relationships**: Stores entities and memories with relationships in Dgraph
+- **Locomo Benchmark Integration**: Purpose-built ingestion for AI agent memory benchmarking
 - **Two MCP Tools**:
   - `save_user_message`: Process and save messages with entity extraction
   - `graph_memory_search`: Vector-based search through stored memories
@@ -290,6 +291,58 @@ Searches for relevant memories using vector similarity on entity embeddings.
   "limit": 5
 }
 ```
+
+## Locomo AI Agent Memory Benchmark
+
+Graph Fetch includes a specialized ingestion script for the **Locomo-10** AI agent memory benchmark dataset. This benchmark contains 10 realistic multi-session conversations designed to test an AI agent's ability to build and maintain long-term memory across interactions.
+
+### Quick Start
+
+```bash
+# 1. Start Dgraph and MCP server
+docker run --rm -it -p 8080:8080 -p 9080:9080 -p 8000:8000 dgraph/standalone:latest
+npm run build && npm start
+
+# 2. Test with small sample
+node scripts/ingest-locomo.js --max-conversations 1 --max-sessions 1 --max-messages 5
+
+# 3. Process larger batches
+node scripts/ingest-locomo.js --max-conversations 2 --max-sessions 3 --max-messages 10
+```
+
+### Dataset Overview
+
+- **10 conversations** between different speaker pairs
+- **~190 sessions** total (spanning days/weeks per conversation)
+- **~4000+ messages** with rich contextual information
+- **Realistic scenarios**: Work stress, relationships, life events, personal growth
+
+The ingestion script processes conversations through the Graph Fetch pipeline to:
+- Extract entities (people, places, organizations, events, emotions)
+- Build relationships between entities automatically  
+- Generate embeddings for semantic search
+- Store everything in Dgraph as a connected knowledge graph
+
+### Example Output
+
+```bash
+📋 Processing conversation 1: Caroline & Melanie
+[SAVE] [1:56 pm on 8 May, 2023] Caroline: Hey Mel! Good to see you!
+✅ Saved - Successfully saved message with 3 entities (1 new) and 2 relationships. Memory ID: 0x753d
+
+✅ Ingestion completed!
+📈 Total processed: 10 messages from 1 conversations  
+✅ Successfully saved: 10 ❌ Errors: 0
+```
+
+### Use Cases
+
+- **Benchmark AI agent memory systems** against standardized dataset
+- **Test graph-based memory retrieval** with complex multi-session contexts
+- **Evaluate entity extraction** on realistic conversation data
+- **Research long-term memory** patterns in AI agent interactions
+
+**📖 [Complete Locomo Ingestion Guide →](scripts/README.md)**
 
 ## Architecture
 
