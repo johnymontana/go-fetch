@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # Graph Algorithms API Server
+  graph-algos:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - DGRAPH_CONNECTION_STRING=dgraph://dgraph:9080
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=5000
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=json
+    depends_on:
+      - dgraph
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Dgraph Database
+  dgraph:
+    image: dgraph/standalone:latest
+    ports:
+      - "8080:8080"   # Dgraph Alpha HTTP
+      - "9080:9080"   # Dgraph Alpha gRPC  
+      - "8000:8000"   # Dgraph Ratel (UI)
+    volumes:
+      - dgraph_data:/dgraph
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Periodic Algorithm Runner (Optional)
+  graph-algos-scheduler:
+    build: .
+    command: ["uv", "run", "graph-algos", "scheduler", "--schedule", "0 */6 * * *", "--algorithms", "all"]
+    environment:
+      - DGRAPH_CONNECTION_STRING=dgraph://dgraph:9080
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=json
+      - ENABLE_SCHEDULER=true
+    depends_on:
+      - dgraph
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    profiles:
+      - scheduler
+
+volumes:
+  dgraph_data:

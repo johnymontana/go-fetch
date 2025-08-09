@@ -353,6 +353,124 @@ After ingestion, explore the generated knowledge graph with powerful DQL queries
 **📖 [Complete Locomo Ingestion Guide →](scripts/README.md)**  
 **🔍 [Example DQL Queries & Analysis →](eval/README.md)**
 
+## Community Detection & Graph Enrichment
+
+Graph Fetch includes a powerful Python companion service for advanced graph analytics that can discover semantic communities within your memory graph and enrich the data model with dedicated community nodes.
+
+### Label Propagation Community Detection
+
+The service uses **Label Propagation** algorithm to automatically discover communities of related entities in your graph data. This unsupervised approach identifies clusters of entities that are semantically connected, revealing the underlying structure of your AI agent's memory.
+
+**How it works:**
+1. **Analyzes entity relationships** in your existing Dgraph memory graph
+2. **Discovers semantic communities** using NetworkX label propagation algorithm  
+3. **Creates dedicated Community nodes** with type `Community` in Dgraph
+4. **Establishes member relationships** connecting each community to its member entities
+5. **Enriches queries** enabling community-based memory retrieval and analysis
+
+### Graph Data Model Enrichment
+
+The community detection transforms your flat entity-relationship structure into a rich, hierarchical graph:
+
+**Before**: `Entity ←→ relatedTo ←→ Entity`
+
+**After**: `Entity ←→ relatedTo ←→ Entity`  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↕  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`Community`
+
+Each discovered community becomes a first-class entity with:
+- **Semantic groupings**: Related people, concepts, events clustered together
+- **Metadata**: Algorithm used, community size, execution timestamp
+- **Queryable structure**: Find all members of a community or which communities an entity belongs to
+
+### Running Community Detection
+
+Prerequisites:
+- Python 3.11+ with UV package manager
+- Existing Dgraph instance with Entity/Memory data
+
+```bash
+# Navigate to the graph algorithms service
+cd graph-algos
+
+# Install dependencies
+uv sync
+
+# Configure connection to your Dgraph instance
+cp .env.example .env
+# Edit .env with your DGRAPH_CONNECTION_STRING
+
+# Run label propagation with community node creation
+uv run graph-algos community --algorithm label_propagation --write --create-communities
+
+# Verify communities were created
+uv run python verify_communities.py
+```
+
+### Example Results
+
+When run on an AI agent memory graph with 134 entities:
+
+```bash
+✅ Found 17 community nodes
+📊 Community Statistics:
+   Total communities: 17
+   Total member relationships: 134
+   Average community size: 7.9
+
+📊 Example Discovered Communities:
+   Community 0: Caroline, Mel, conversation dates (37 members)
+   Community 1: Melanie, inspiring stories, creative concepts (11 members) 
+   Community 2: Mental health topics, charity events (3 members)
+   Community 4: Family relationships, community involvement (35 members)
+```
+
+### Advanced Querying with Communities
+
+With community nodes created, you can perform sophisticated graph queries:
+
+```dql
+# Find all communities and their members
+{
+  communities(func: type(Community)) {
+    uid name algorithm member_count
+    members { uid name type }
+  }
+}
+
+# Find which communities a person belongs to
+{
+  caroline(func: eq(name, "Caroline")) {
+    name
+    ~members { name algorithm community_id }
+  }
+}
+
+# Search memories by community context
+{
+  mental_health_community(func: eq(name, "label_propagation_community_2")) {
+    name member_count
+    members {
+      name type
+      ~relatedTo {
+        dgraph.type
+        content  # If linked to Memory nodes
+      }
+    }
+  }
+}
+```
+
+### Use Cases
+
+- **Contextual Memory Retrieval**: Find memories by community themes rather than individual entities
+- **Semantic Organization**: Understand how your AI agent naturally groups related information
+- **Conversation Analysis**: Identify topic clusters and relationship patterns across sessions
+- **Memory Summarization**: Generate community-level summaries and insights
+- **Graph Exploration**: Navigate memory graph by semantic communities rather than individual connections
+
+**🔧 [Complete Graph Algorithms Documentation →](graph-algos/README.md)**
+
 ## Architecture
 
 - **src/lib/dgraph.ts**: Dgraph database operations and schema management
