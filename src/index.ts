@@ -27,11 +27,35 @@ const config = {
     embeddingModel: process.env.EMBEDDING_MODEL || 'text-embedding-3-small',
     llmModel: process.env.LLM_MODEL || 'gpt-4o-mini',
   } as AIConfig,
+  server: {
+    mcpTimeout: parseInt(process.env.MCP_TIMEOUT || '300000'), // 5 minutes default (milliseconds)
+    port: parseInt(process.env.PORT || '3000'),
+  },
 };
 
 // Validate configuration
 if (!config.ai.apiKey) {
   throw new Error('AI API key is required. Set OPENAI_API_KEY or ANTHROPIC_API_KEY environment variable.');
+}
+
+console.log(`[${new Date().toISOString()}] Configuration loaded:`);
+console.log(`[${new Date().toISOString()}] - MCP Timeout: ${config.server.mcpTimeout}ms (${config.server.mcpTimeout / 1000}s)`);
+console.log(`[${new Date().toISOString()}] - AI Provider: ${config.ai.provider}`);
+console.log(`[${new Date().toISOString()}] - Dgraph: ${config.dgraph.connectionString.replace(/bearertoken=[^&?]*/g, 'bearertoken=***')}`);
+
+// Timeout wrapper function
+async function withTimeout<T>(
+  promise: Promise<T>, 
+  timeoutMs: number, 
+  operation: string
+): Promise<T> {
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`Operation '${operation}' timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+  
+  return Promise.race([promise, timeoutPromise]);
 }
 
 // Initialize services
@@ -99,40 +123,56 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
+  const startTime = Date.now();
+  
+  console.log(`[${new Date().toISOString()}] MCP Tool '${name}' started with timeout ${config.server.mcpTimeout}ms`);
 
   try {
+    let result: string;
+    
     switch (name) {
       case 'save_user_message': {
-        const result = await saveUserMessageTool.execute(args as { message: string });
-        return {
-          content: [
-            {
-              type: 'text',
-              text: result,
-            },
-          ],
-        };
+        result = await withTimeout(
+          saveUserMessageTool.execute(args as { message: string }),
+          config.server.mcpTimeout,
+          'save_user_message'
+        );
+        break;
       }
       case 'graph_memory_search': {
-        const result = await graphMemorySearchTool.execute(args as { query: string; limit?: number });
-        return {
-          content: [
-            {
-              type: 'text',
-              text: result,
-            },
-          ],
-        };
+        result = await withTimeout(
+          graphMemorySearchTool.execute(args as { query: string; limit?: number }),
+          config.server.mcpTimeout,
+          'graph_memory_search'
+        );
+        break;
       }
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
-  } catch (error) {
+    
+    const duration = Date.now() - startTime;
+    console.log(`[${new Date().toISOString()}] MCP Tool '${name}' completed successfully in ${duration}ms`);
+    
     return {
       content: [
         {
           type: 'text',
-          text: `Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`,
+          text: result,
+        },
+      ],
+    };
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    
+    console.error(`[${new Date().toISOString()}] MCP Tool '${name}' failed after ${duration}ms: ${errorMessage}`);
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Error: ${errorMessage}`,
         },
       ],
       isError: true,
@@ -248,12 +288,12 @@ async function startServer(): Promise<void> {
   });
   
   // Start the Express server
-  const port = Number(process.env.PORT) || 3000;
-  app.listen(port, () => {
-    console.error(`[${getTimestamp()}] Graph Fetch MCP Server is ready on port ${port}!`);
+  app.listen(config.server.port, () => {
+    console.error(`[${getTimestamp()}] Graph Fetch MCP Server is ready on port ${config.server.port}!`);
+    console.error(`[${getTimestamp()}] MCP Timeout: ${config.server.mcpTimeout}ms (${config.server.mcpTimeout / 1000}s)`);
     console.error(`[${getTimestamp()}] Available tools: save_user_message, graph_memory_search`);
-    console.error(`[${getTimestamp()}] MCP endpoint: http://localhost:${port}/mcp`);
-    console.error(`[${getTimestamp()}] Health check: http://localhost:${port}/health`);
+    console.error(`[${getTimestamp()}] MCP endpoint: http://localhost:${config.server.port}/mcp`);
+    console.error(`[${getTimestamp()}] Health check: http://localhost:${config.server.port}/health`);
     console.error(`[${getTimestamp()}] Server process ID: ${process.pid}`);
   });
 }
