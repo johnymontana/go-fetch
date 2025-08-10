@@ -9,10 +9,13 @@ An MCP (Model Context Protocol) server that provides graph-based memory tools fo
 - **Entity Extraction**: Automatically extracts entities from user messages using LLMs
 - **Vector Search**: Semantic search through memories using embeddings
 - **Graph Relationships**: Stores entities and memories with relationships in Dgraph
+- **Graph Algorithms**: Analyzes graph structure (community detection and centrality)
 - **Locomo Benchmark Integration**: Purpose-built ingestion for AI agent memory benchmarking
 - **Two MCP Tools**:
   - `save_user_message`: Process and save messages with entity extraction
   - `graph_memory_search`: Vector-based search through stored memories
+
+![go fetch architecture](img/go-fetch-arch.png)
 
 ## Graph Data Model
 
