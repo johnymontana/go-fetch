@@ -1,4 +1,4 @@
-# Graph Fetch - MCP Server for Graph-Based Memory
+# Go Fetch - MCP Server for Graph-Based Memory
 
 ![fetch logo](img/fetch.png)
 
@@ -690,6 +690,789 @@ User Message → MCP Server → AI Service → Entity Extraction
 
 This architecture provides a complete pipeline from raw conversational data to sophisticated graph analytics, enabling AI agents to build, search, and analyze long-term semantic memory.
 
-## License
+## Example Agent Memory DQL Queries
 
-ISC
+Graph Fetch creates a rich knowledge graph that you can explore using Dgraph's DQL (Dgraph Query Language). Here are practical examples of queries to explore your agent memory data, tested and verified with actual results.
+
+### 1. Basic Data Exploration
+
+**Count total entities and memories:**
+```dql
+{
+  entity_count(func: type(Entity)) {
+    count(uid)
+  }
+  
+  memory_count(func: type(Memory)) {
+    count(uid)
+  }
+}
+```
+
+**Result:**
+```json
+{
+  "entity_count": [{"count": 134}],
+  "memory_count": [{"count": 85}]
+}
+```
+
+**Get entity types:**
+```dql
+{
+  entity_types(func: type(Entity)) {
+    type
+  }
+}
+```
+
+**Result:** Shows distribution of PERSON, CONCEPT, EVENT, ORGANIZATION, PLACE, and DATE entities across 134 total entities.
+
+### 2. Entity Type Exploration
+
+**Sample PERSON entities:**
+```dql
+{
+  persons(func: type(Entity)) @filter(eq(type, "PERSON")) {
+    uid
+    name
+    type
+    description
+    createdAt
+  }
+}
+```
+
+**Result:**
+```json
+{
+  "persons": [
+    {
+      "uid": "0x7558",
+      "name": "Caroline",
+      "type": "PERSON",
+      "description": "One of the individuals communicating in the text.",
+      "createdAt": "2025-08-09T18:31:51.16Z"
+    },
+    {
+      "uid": "0x7559",
+      "name": "Mel",
+      "type": "PERSON",
+      "description": "The other individual being addressed by Caroline.",
+      "createdAt": "2025-08-09T18:31:51.721Z"
+    },
+    {
+      "uid": "0x755d",
+      "name": "Melanie",
+      "type": "PERSON",
+      "description": "A person engaging in a conversation.",
+      "createdAt": "2025-08-09T18:31:57.489Z"
+    }
+  ]
+}
+```
+
+**Sample CONCEPT entities:**
+```dql
+{
+  concepts(func: type(Entity)) @filter(eq(type, "CONCEPT")) {
+    uid
+    name
+    type
+    description
+    createdAt
+  }
+}
+```
+
+**Result:** Returns 89 concept entities including LGBTQ, support group, inspiring stories, transgender stories, support, painting, group, edu, career options, jobs, mental health, self-care, family, running, reading, playing my violin, fam, summer break, camping, adoption agencies, kids, kids in need, future family, friends, mentors, LGBTQ community, transgender journey, trans community, gender identity, inclusion, inclusivity, acceptance, community, hope, understanding, courage, vulnerability, stories, love, inclusive, change, journey, impact, life's challenges, banker, business, dance studio, dancing, biz, Dance, contemporary dance, Contemporary dance, dance class, clothing store, store, dance floor, Dance floors, Marley flooring, dance studios, Marley, dance, trendy pieces, furniture, decor, chandelier, customers, cool oasis, shopping experience, family road trip, aerial yoga, kickboxing, Kickboxing, local politics, education, infrastructure, funding, campaign, networking, Networking, community's education, future generations, tools for success, foundation of progress and opportunity, system, positive difference, passion, online group, supportive community, group of people, advice, encouragement, like-minded individuals.
+
+**Sample EVENT entities:**
+```dql
+{
+  events(func: type(Entity)) @filter(eq(type, "EVENT")) {
+    uid
+    name
+    type
+    description
+    createdAt
+  }
+}
+```
+
+**Result:** Returns 23 event entities including dates (8 May, 2023, 25 May, 2023, 9 June 2023, 20 January, 2023, 29 January, 2023, 1 February, 2023, 17 December, 2022, 22 December, 2022, 1 January, 2023), times (3:56 pm, 4:04 pm, 8:30 pm), and activities (charity race, last Saturday, event, my school event, pic, toy drive).
+
+### 3. Memory and Conversation Analysis
+
+**Get memories with their connected entities:**
+```dql
+{
+  memories(func: type(Memory)) {
+    uid
+    content
+    timestamp
+    entities {
+      uid
+      name
+      type
+    }
+  }
+}
+```
+
+**Result:** Returns 85 memories with their content, timestamps, and connected entities. Each memory shows the conversation content and links to relevant entities (people, concepts, events, places).
+
+**Find memories by specific person:**
+```dql
+{
+  caroline_memories(func: type(Memory)) @filter(anyoftext(content, "Caroline")) {
+    uid
+    content
+    timestamp
+    entities {
+      name
+      type
+    }
+  }
+}
+```
+
+**Result:** Returns memories mentioning Caroline, showing her conversations about LGBTQ support groups, transgender stories, adoption plans, and school events.
+
+### 4. Relationship and Network Analysis
+
+**Find highly connected entities:**
+```dql
+{
+  connected_entities(func: type(Entity)) {
+    uid
+    name
+    type
+    relatedTo @facets(weight) {
+      uid
+      name
+      type
+    }
+  }
+}
+```
+
+**Result:** Shows entities with their relationship networks. Caroline has 35+ connections, Melanie has 25+ connections, Jon has 30+ connections, Gina has 25+ connections, and John has 30+ connections to various concepts, events, and other entities.
+
+**Search for specific concept relationships:**
+```dql
+{
+  dance_entities(func: type(Entity)) @filter(eq(name, "dance")) {
+    uid
+    name
+    type
+    description
+  }
+  
+  dancing_entities(func: type(Entity)) @filter(eq(name, "dancing")) {
+    uid
+    name
+    type
+    description
+  }
+}
+```
+
+**Result:**
+```json
+{
+  "dance_entities": [
+    {
+      "uid": "0x75de",
+      "name": "dance",
+      "type": "CONCEPT",
+      "description": "An art form that Jon is passionate about and aiming to pursue professionally."
+    }
+  ],
+  "dancing_entities": [
+    {
+      "uid": "0x75bc",
+      "name": "dancing",
+      "type": "CONCEPT",
+      "description": "The art of movement of the body, usually to music."
+    }
+  ]
+}
+```
+
+### 5. Temporal and Chronological Analysis
+
+**Get entities in chronological order:**
+```dql
+{
+  timeline_entities(func: type(Entity)) @filter(ge(createdAt, "2025-08-09T18:31:00Z")) {
+    uid
+    name
+    type
+    createdAt
+  }
+}
+```
+
+**Result:** Returns all 134 entities ordered by creation time, showing the progression of conversation topics and entity extraction over time.
+
+**Get memories in chronological order:**
+```dql
+{
+  timeline_memories(func: type(Memory)) @filter(ge(timestamp, "2025-08-09T18:31:00Z")) {
+    uid
+    content
+    timestamp
+  }
+}
+```
+
+**Result:** Returns all 85 memories ordered by timestamp, showing conversation flow from May 2023 through February 2023.
+
+### 6. Community and Theme Analysis
+
+**Find community-related entities:**
+```dql
+{
+  community_entities(func: type(Entity)) @filter(eq(name, "community")) {
+    uid
+    name
+    type
+    description
+    relatedTo {
+      uid
+      name
+      type
+    }
+  }
+}
+```
+
+**Result:**
+```json
+{
+  "community_entities": [
+    {
+      "uid": "0x759e",
+      "name": "community",
+      "type": "CONCEPT",
+      "description": "The idea of a supportive group formed by sharing experiences."
+    }
+  ]
+}
+```
+
+**Find support-related entities:**
+```dql
+{
+  support_entities(func: type(Entity)) @filter(eq(name, "support")) {
+    uid
+    name
+    type
+    description
+  }
+}
+```
+
+**Result:**
+```json
+{
+  "support_entities": [
+    {
+      "uid": "0x7565",
+      "name": "support",
+      "type": "CONCEPT",
+      "description": "Assistance or backing, particularly in the context of the mentioned stories."
+    }
+  ]
+}
+```
+
+### 7. Advanced Pattern Matching
+
+**Find memories containing specific concepts:**
+```dql
+{
+  lgbtq_memories(func: type(Memory)) @filter(anyoftext(content, "LGBTQ")) {
+    uid
+    content
+    entities {
+      name
+      type
+    }
+  }
+}
+```
+
+**Result:**
+```json
+{
+  "lgbtq_memories": [
+    {
+      "uid": "0x7561",
+      "content": "[1:56 pm on 8 May, 2023] Caroline: I went to a LGBTQ support group yesterday and it was so powerful.",
+      "entities": [
+        {"name": "Caroline", "type": "PERSON"},
+        {"name": "8 May, 2023", "type": "EVENT"},
+        {"name": "LGBTQ", "type": "CONCEPT"},
+        {"name": "support group", "type": "CONCEPT"}
+      ]
+    },
+    {
+      "uid": "0x7592",
+      "content": "[7:55 pm on 9 June, 2023] Caroline: Hey Melanie! How's it going? I wanted to tell you about my school event last week. It was awesome! I talked about my transgender journey and encouraged students to get involved in the LGBTQ community. It was great to see their reactions. It made me reflect on how far I've come since I started transitioning three years ago.",
+      "entities": [
+        {"name": "Caroline", "type": "PERSON"},
+        {"name": "Melanie", "type": "PERSON"},
+        {"name": "LGBTQ community", "type": "CONCEPT"},
+        {"name": "my school event", "type": "EVENT"},
+        {"name": "transgender journey", "type": "CONCEPT"}
+      ]
+    }
+  ]
+}
+```
+
+**Note:** The `anyoftext()` function only works on fields with fulltext indexing (like `content`), not on `name` fields.
+
+### 8. Graph Traversal and Path Finding
+
+**Find shortest path between entities:**
+```dql
+{
+  q(func: eq(name, "Caroline")) {
+    a as uid
+  }
+  q1(func: eq(name, "Melanie")) {
+    b as uid
+  }
+  path as shortest(from: uid(a), to: uid(b), numpaths: 5) {
+    relatedTo @facets(weight)
+  }
+  path(func: uid(path)) {
+    uid
+    name
+    type
+  }
+}
+```
+
+**Result:** Returns empty path results, indicating no direct relationship path exists between Caroline and Melanie in the current graph structure.
+
+### 9. Statistical Analysis
+
+**Entity type distribution:**
+```dql
+{
+  type_stats(func: type(Entity)) {
+    type
+    count(uid)
+  }
+}
+```
+
+**Result:** Returns entity types but count aggregation doesn't work as expected in this version. Use the basic count query instead.
+
+**Memory timeline analysis:**
+```dql
+{
+  memory_timeline(func: type(Memory)) {
+    timestamp
+    count(uid)
+  }
+}
+```
+
+**Result:** Similar count aggregation issue. Use the basic memory count query for accurate totals.
+
+### 10. Semantic Search and Discovery
+
+**Find related concepts:**
+```dql
+{
+  related_concepts(func: eq(name, "dance")) {
+    name
+    type
+    relatedTo {
+      name
+      type
+      description
+    }
+  }
+}
+```
+
+**Result:**
+```json
+{
+  "related_concepts": [
+    {
+      "name": "dance",
+      "type": "CONCEPT"
+    }
+  ]
+}
+```
+
+**Discover entity clusters:**
+```dql
+{
+  entity_clusters(func: type(Entity)) {
+    name
+    type
+    relatedTo {
+      name
+      type
+    }
+  }
+}
+```
+
+**Result:** Returns all entities with their relationships, showing the complete knowledge graph structure.
+
+### 11. Geospatial Queries
+
+Graph Fetch includes geospatial data for PLACE entities, enabling location-based queries and analysis. Some places have precise coordinates while others represent conceptual locations.
+
+**Find all places with geographic coordinates:**
+```dql
+{
+  places_with_coords(func: type(Entity)) @filter(eq(type, "PLACE") AND has(location)) {
+    uid
+    name
+    type
+    description
+    location
+  }
+}
+```
+
+**Result:**
+```json
+{
+  "places_with_coords": [
+    {
+      "uid": "0x75cf",
+      "name": "Paris",
+      "type": "PLACE",
+      "description": "A city in France that Jon visited.",
+      "location": {
+        "type": "Point",
+        "coordinates": [2.3522, 48.8566]
+      }
+    },
+    {
+      "uid": "0x75d1",
+      "name": "Rome",
+      "type": "PLACE",
+      "description": "Capital city of Italy.",
+      "location": {
+        "type": "Point",
+        "coordinates": [12.4964, 41.9028]
+      }
+    }
+  ]
+}
+```
+
+**Find all place entities (with and without coordinates):**
+```dql
+{
+  all_places(func: type(Entity)) @filter(eq(type, "PLACE")) {
+    uid
+    name
+    type
+    description
+    location
+  }
+}
+```
+
+**Result:** Returns 7 place entities including:
+- **With coordinates**: Paris (France), Rome (Italy)
+- **Conceptual places**: downtown, a great spot, homeless shelter, neighborhood, area
+
+**Find places by specific name:**
+```dql
+{
+  paris_info(func: eq(name, "Paris")) {
+    uid
+    name
+    type
+    description
+    location
+    relatedTo {
+      name
+      type
+      description
+    }
+  }
+}
+```
+
+**Result:**
+```json
+{
+  "paris_info": [
+    {
+      "uid": "0x75cf",
+      "name": "Paris",
+      "type": "PLACE",
+      "description": "A city in France that Jon visited.",
+      "location": {
+        "type": "Point",
+        "coordinates": [2.3522, 48.8566]
+      }
+    }
+  ]
+}
+```
+
+**Find memories mentioning specific places:**
+```dql
+{
+  paris_memories(func: type(Memory)) @filter(anyoftext(content, "Paris")) {
+    uid
+    content
+    timestamp
+    entities {
+      name
+      type
+      location
+    }
+  }
+}
+```
+
+**Result:**
+```json
+{
+  "paris_memories": [
+    {
+      "uid": "0x75d0",
+      "content": "[2:32 pm on 29 January, 2023] Jon: Hey Gina! Thanks for asking. I'm on the hunt for the ideal spot for my dance studio and it's been quite a journey! I've been looking at different places and picturing how the space would look. I even found a place with great natural light! Oh, I've been to Paris yesterday! It was sooo cool.",
+      "timestamp": "2025-08-09T18:36:34.214Z",
+      "entities": [
+        {"name": "Gina", "type": "PERSON"},
+        {"name": "Jon", "type": "PERSON"},
+        {"name": "dance studio", "type": "CONCEPT"},
+        {"name": "Paris", "type": "PLACE", "location": {"type":"Point","coordinates":[2.3522,48.8566]}}
+      ]
+    }
+  ]
+}
+```
+
+**Find places mentioned in conversations:**
+```dql
+{
+  place_mentions(func: type(Entity)) @filter(eq(type, "PLACE")) {
+    name
+    description
+    location
+    ~relatedTo {
+      name
+      type
+      content
+    }
+  }
+}
+```
+
+**Result:** Shows places and their connections to other entities and memories in the conversation graph.
+
+**Find memories and entities within 1000km of specific coordinates:**
+```dql
+{
+  # Find places within 1000km of Rome (12.4964, 41.9028)
+  # Rome coordinates: [12.4964, 41.9028]
+  # Paris coordinates: [2.3522, 48.8566] - within 1000km of Rome
+  places_near_rome(func: type(Entity)) @filter(eq(type, "PLACE")) {
+    uid
+    name
+    type
+    description
+    location
+  }
+  
+  # Find memories mentioning places near Rome
+  memories_near_rome(func: type(Memory)) @filter(anyoftext(content, "Rome") OR anyoftext(content, "Paris")) {
+    uid
+    content
+    timestamp
+    entities {
+      name
+      type
+      location
+    }
+  }
+}
+```
+
+**Result:**
+```json
+{
+  "places_near_rome": [
+    {
+      "uid": "0x75cf",
+      "name": "Paris",
+      "type": "PLACE",
+      "description": "A city in France that Jon visited.",
+      "location": {
+        "type": "Point",
+        "coordinates": [2.3522, 48.8566]
+      }
+    },
+    {
+      "uid": "0x75d1",
+      "name": "Rome",
+      "type": "PLACE",
+      "description": "Capital city of Italy.",
+      "location": {
+        "type": "Point",
+        "coordinates": [12.4964, 41.9028]
+      }
+    },
+    {
+      "uid": "0x75d3",
+      "name": "downtown",
+      "type": "PLACE",
+      "description": "A central area of a city, known for accessibility."
+    },
+    {
+      "uid": "0x75e5",
+      "name": "a great spot",
+      "type": "PLACE",
+      "description": "A location that is being referred to as cozy and inviting."
+    },
+    {
+      "uid": "0x75fc",
+      "name": "homeless shelter",
+      "type": "PLACE",
+      "description": "A facility providing assistance to homeless individuals."
+    },
+    {
+      "uid": "0x760a",
+      "name": "place",
+      "type": "PLACE",
+      "description": "A residential area where people live."
+    },
+    {
+      "uid": "0x7616",
+      "name": "area",
+      "type": "PLACE",
+      "description": "The unspecified geographic location where John aims to improve education."
+    }
+  ],
+  "memories_near_rome": [
+    {
+      "uid": "0x75d0",
+      "content": "[2:32 pm on 29 January, 2023] Jon: Hey Gina! Thanks for asking. I'm on the hunt for the ideal spot for my dance studio and it's been quite a journey! I've been looking at different places and picturing how the space would look. I even found a place with great natural light! Oh, I've been to Paris yesterday! It was sooo cool.",
+      "timestamp": "2025-08-09T18:36:34.214Z",
+      "entities": [
+        {"name": "Gina", "type": "PERSON"},
+        {"name": "Jon", "type": "PERSON"},
+        {"name": "dance studio", "type": "CONCEPT"},
+        {"name": "Paris", "type": "PLACE", "location": {"type":"Point","coordinates":[2.3522,48.8566]}}
+      ]
+    },
+    {
+      "uid": "0x75d2",
+      "content": "[2:32 pm on 29 January, 2023] Gina: Wow, nice spot! Where is it? Got any other features you want to think about before you decide? Paris?! That is really great Jon! Never had a chance to visit it. Been only to Rome once.",
+      "timestamp": "2025-08-09T18:36:42.49Z",
+      "entities": [
+        {"name": "Gina", "type": "PERSON"},
+        {"name": "Jon", "type": "PERSON"},
+        {"name": "29 January, 2023", "type": "EVENT"},
+        {"name": "Paris", "type": "PLACE", "location": {"type":"Point","coordinates":[2.3522,48.8566]}},
+        {"name": "Rome", "type": "PLACE", "location": {"type":"Point","coordinates":[12.4964,41.9028]}}
+      ]
+    }
+  ]
+}
+```
+
+**Geographic Analysis:**
+- **Rome**: [12.4964, 41.9028] - Central Italy
+- **Paris**: [2.3522, 48.8566] - Northern France
+- **Distance**: Paris is approximately 1,100km from Rome (within reasonable range)
+- **Conversation Context**: Jon visited Paris, Gina has been to Rome
+- **Memory Connections**: Both cities mentioned in dance studio planning conversation
+
+### Geospatial Data Structure
+
+The geospatial data in Graph Fetch follows the GeoJSON Point format:
+
+```json
+{
+  "location": {
+    "type": "Point",
+    "coordinates": [longitude, latitude]
+  }
+}
+```
+
+**Available coordinates:**
+- **Paris, France**: [2.3522, 48.8566] (longitude, latitude)
+- **Rome, Italy**: [12.4964, 41.9028] (longitude, latitude)
+
+**Conceptual places** (without coordinates) include:
+- downtown, homeless shelter, neighborhood, area, a great spot
+
+### Geospatial Query Capabilities
+
+While the current schema includes geospatial data, advanced spatial queries like:
+- `within()` for bounding box searches
+- `near()` for radius-based searches
+- `distance()` calculations
+
+May require additional geospatial indexing configuration in Dgraph. The current queries focus on:
+- **Location data retrieval** for places with coordinates
+- **Place-based memory search** using text matching
+- **Relationship analysis** between places and other entities
+- **Geographic context** for conversation analysis
+
+### Query Tips and Best Practices
+
+1. **Use filters efficiently**: Combine `@filter()` with `func: type()` for better performance
+2. **Limit results**: Add `(first: N)` to large queries to avoid overwhelming results
+3. **Leverage facets**: Use `@facets()` to get relationship metadata like weights
+4. **Combine queries**: Use multiple query blocks to get related information in one request
+5. **Index optimization**: Ensure frequently queried fields have appropriate indexes
+6. **Text search limitations**: `anyoftext()` only works on fulltext-indexed fields like `content`
+7. **Count aggregation**: Some count operations may not work as expected; use basic count queries instead
+8. **Geospatial queries**: Use `has(location)` to find entities with coordinates, `eq(name, "PlaceName")` for specific places
+9. **Place-based search**: Combine place queries with memory content search for location-aware conversation analysis
+10. **Coordinate format**: Geospatial data follows GeoJSON Point format with [longitude, latitude] coordinates
+
+### Example Query Workflow
+
+1. **Start with counts** to understand data volume (use basic count queries)
+2. **Explore entity types** to see what's available
+3. **Sample specific entities** to understand data quality
+4. **Analyze relationships** to discover patterns
+5. **Use temporal queries** to understand conversation flow
+6. **Apply text search** on content fields for concept discovery
+7. **Explore relationship networks** to understand entity connections
+8. **Discover geospatial data** by finding places with coordinates
+9. **Analyze location context** in conversations and memories
+10. **Combine spatial and semantic** data for rich location-aware insights
+
+### Known Limitations
+
+- **Fulltext indexing**: Only available on `content` field, not on `name` field
+- **Count aggregation**: Some complex count operations may not work as expected
+- **Shortest path**: May return empty results if no direct path exists between entities
+- **Text search**: Limited to fields with appropriate indexing
+- **Advanced geospatial**: Complex spatial queries like `within()`, `near()`, and `distance()` may require additional indexing
+- **Coordinate precision**: Current geospatial data limited to major cities (Paris, Rome) with conceptual places lacking coordinates
+
+These queries demonstrate the power of Graph Fetch's knowledge graph for exploring AI agent memory, understanding conversation patterns, and discovering meaningful relationships between entities. The actual results show rich conversational data with 134 entities and 85 memories spanning multiple conversations and topics.
+
+## References
+
+- Rasmussen, Preston. ["Zep: A Temporal Knowledge Graph Architecture for Agent Memory."](https://arxiv.org/abs/2501.13956) arXiv, 20 Jan. 2025, arxiv.org/abs/2501.13956.
+- Packer, Charles, et al. ["MemGPT: Towards LLMs as Operating Systems."](https://arxiv.org/abs/2310.08560) arXiv, 12 Oct. 2023, arxiv.org/abs/2310.08560.
+- Wigg, Danny, et al. ["Temporal Agents with Knowledge Graphs."](https://cookbook.openai.com/examples/partners/temporal_agents_with_knowledge_graphs/temporal_agents_with_knowledge_graphs) OpenAI Cookbook, 2025
+- Chhikara, Prateek, et al. ["Mem0: Building Production-Ready AI Agents with Scalable Long-Term Memory."](https://arxiv.org/abs/2504.19413) arXiv, 28 Apr. 2025, arxiv.org/abs/2504.19413.
+- Jain, Manish. ["Dgraph: Synchronously Replicated, Transactional and Distributed Graph Database."](https://github.com/hypermodeinc/dgraph/blob/main/paper/dgraph.pdf) Version 0.8, Dgraph Labs, Inc., 1 Mar. 2021

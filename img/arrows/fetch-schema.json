@@ -56,8 +56,8 @@
     {
       "id": "n0",
       "position": {
-        "x": -114,
-        "y": -207.459119491258
+        "x": -175.60400693752592,
+        "y": -237.768897813427
       },
       "caption": "",
       "labels": [
@@ -73,8 +73,8 @@
     {
       "id": "n1",
       "position": {
-        "x": 224.7765784841205,
-        "y": -207.459119491258
+        "x": 183.57903708964048,
+        "y": -237.768897813427
       },
       "caption": "",
       "labels": [
@@ -92,11 +92,10 @@
     {
       "id": "n2",
       "position": {
-        "x": 3.9875150760572637,
-        "y": 49.487878173236396
+        "x": 492.7248390672198,
+        "y": -220.67662262540338
       },
       "caption": "",
-      "style": {},
       "labels": [
         "Entity"
       ],
@@ -106,7 +105,8 @@
         "embedding": "float32vector",
         "description": "string",
         "type": "string"
-      }
+      },
+      "style": {}
     },
     {
       "id": "n3",
@@ -115,7 +115,6 @@
         "y": -525.0256738000904
       },
       "caption": "",
-      "style": {},
       "labels": [
         "Entity"
       ],
@@ -124,7 +123,58 @@
         "name": "string",
         "embedding": "float32vector",
         "description": "string",
-        "type": "string"
+        "type": "string",
+        "location": "geo"
+      },
+      "style": {}
+    },
+    {
+      "id": "n4",
+      "position": {
+        "x": 330.76560418255605,
+        "y": -614.3881413651293
+      },
+      "caption": "",
+      "labels": [
+        "Community"
+      ],
+      "properties": {
+        "communityid": "int",
+        "summary": "string"
+      },
+      "style": {}
+    },
+    {
+      "id": "n5",
+      "position": {
+        "x": 673.5640823465197,
+        "y": -471.994033167598
+      },
+      "caption": "",
+      "labels": [
+        "Community"
+      ],
+      "properties": {
+        "communityid": "int",
+        "summary": "string"
+      },
+      "style": {}
+    },
+    {
+      "id": "n6",
+      "position": {
+        "x": 330.76560418255605,
+        "y": 43.203045001790116
+      },
+      "caption": "",
+      "style": {},
+      "labels": [
+        "Memory"
+      ],
+      "properties": {
+        "timestamp": "datetime",
+        "content": "string",
+        "embedding": "float32vector"
       }
     }
   ],
@@ -139,31 +189,63 @@
     },
     {
       "id": "n1",
+      "fromId": "n1",
+      "toId": "n2",
       "type": "RELATED_TO",
-      "style": {},
       "properties": {
         "type": "string"
       },
-      "fromId": "n1",
-      "toId": "n2"
+      "style": {}
     },
     {
       "id": "n2",
-      "type": "HAS_ENTITY",
-      "style": {},
-      "properties": {},
       "fromId": "n0",
-      "toId": "n3"
+      "toId": "n3",
+      "type": "HAS_ENTITY",
+      "properties": {},
+      "style": {}
     },
     {
       "id": "n3",
+      "fromId": "n3",
+      "toId": "n1",
       "type": "RELATED_TO",
-      "style": {},
       "properties": {
         "type": "string"
       },
+      "style": {}
+    },
+    {
+      "id": "n4",
       "fromId": "n3",
-      "toId": "n1"
+      "toId": "n4",
+      "type": "IN_COMMUNITY",
+      "properties": {},
+      "style": {}
+    },
+    {
+      "id": "n5",
+      "fromId": "n1",
+      "toId": "n4",
+      "type": "IN_COMMUNITY",
+      "properties": {},
+      "style": {}
+    },
+    {
+      "id": "n6",
+      "fromId": "n2",
+      "toId": "n5",
+      "type": "IN_COMMUNITY",
+      "properties": {},
+      "style": {}
+    },
+    {
+      "id": "n7",
+      "type": "HAS_ENTITY",
+      "style": {},
+      "properties": {},
+      "fromId": "n6",
+      "toId": "n2"
     }
   ]
 }
