@@ -154,6 +154,8 @@ The [MCP Inspector](https://github.com/modelcontextprotocol/inspector) is a debu
    }
    ```
 
+   ![](img/example-save-user-message.png)
+
    **Graph Memory Search Tool**:
    ```json
    {
@@ -428,41 +430,7 @@ When run on an AI agent memory graph with 134 entities:
    Community 4: Family relationships, community involvement (35 members)
 ```
 
-### Advanced Querying with Communities
 
-With community nodes created, you can perform sophisticated graph queries:
-
-```dql
-# Find all communities and their members
-{
-  communities(func: type(Community)) {
-    uid name algorithm member_count
-    members { uid name type }
-  }
-}
-
-# Find which communities a person belongs to
-{
-  caroline(func: eq(name, "Caroline")) {
-    name
-    ~members { name algorithm community_id }
-  }
-}
-
-# Search memories by community context
-{
-  mental_health_community(func: eq(name, "label_propagation_community_2")) {
-    name member_count
-    members {
-      name type
-      ~relatedTo {
-        dgraph.type
-        content  # If linked to Memory nodes
-      }
-    }
-  }
-}
-```
 
 ### Use Cases
 
@@ -676,19 +644,7 @@ fetch/
 - **`jest.config.js`**: Jest testing framework setup with TypeScript support
 - **`vercel.json`**: Vercel deployment configuration for MCP server
 
-### Data Flow Architecture
 
-```
-User Message → MCP Server → AI Service → Entity Extraction
-                    ↓
-                DgraphService → Store Entities & Memories
-                    ↓
-            [Optional] Python Service → Community Detection → Community Nodes
-                    ↓
-                DQL Queries ← Graph Memory Search ← Vector Similarity
-```
-
-This architecture provides a complete pipeline from raw conversational data to sophisticated graph analytics, enabling AI agents to build, search, and analyze long-term semantic memory.
 
 ## Example Agent Memory DQL Queries
 
@@ -837,6 +793,8 @@ Graph Fetch creates a rich knowledge graph that you can explore using Dgraph's D
 }
 ```
 
+![](img/query-caroline-memories.png)
+
 **Result:** Returns memories mentioning Caroline, showing her conversations about LGBTQ support groups, transgender stories, adoption plans, and school events.
 
 ### 4. Relationship and Network Analysis
@@ -856,6 +814,8 @@ Graph Fetch creates a rich knowledge graph that you can explore using Dgraph's D
   }
 }
 ```
+
+![](img/query-connected-entities.png)
 
 **Result:** Shows entities with their relationship networks. Caroline has 35+ connections, Melanie has 25+ connections, Jon has 30+ connections, Gina has 25+ connections, and John has 30+ connections to various concepts, events, and other entities.
 
@@ -931,60 +891,39 @@ Graph Fetch creates a rich knowledge graph that you can explore using Dgraph's D
 
 ### 6. Community and Theme Analysis
 
-**Find community-related entities:**
+### Advanced Querying with Communities
+
+With community nodes created, you can perform sophisticated graph queries:
+
 ```dql
+# Find all communities and their members
 {
-  community_entities(func: type(Entity)) @filter(eq(name, "community")) {
-    uid
-    name
-    type
-    description
-    relatedTo {
-      uid
-      name
-      type
-    }
+  communities(func: type(Community)) {
+    uid name algorithm member_count
+    members { uid name type }
   }
 }
-```
 
-**Result:**
-```json
+# Find which communities a person belongs to
 {
-  "community_entities": [
-    {
-      "uid": "0x759e",
-      "name": "community",
-      "type": "CONCEPT",
-      "description": "The idea of a supportive group formed by sharing experiences."
-    }
-  ]
-}
-```
-
-**Find support-related entities:**
-```dql
-{
-  support_entities(func: type(Entity)) @filter(eq(name, "support")) {
-    uid
+  caroline(func: eq(name, "Caroline")) {
     name
-    type
-    description
+    ~members { name algorithm community_id }
   }
 }
-```
 
-**Result:**
-```json
+# Search memories by community context
 {
-  "support_entities": [
-    {
-      "uid": "0x7565",
-      "name": "support",
-      "type": "CONCEPT",
-      "description": "Assistance or backing, particularly in the context of the mentioned stories."
+  mental_health_community(func: eq(name, "label_propagation_community_2")) {
+    name member_count
+    members {
+      name type
+      ~relatedTo {
+        dgraph.type
+        content  # If linked to Memory nodes
+      }
     }
-  ]
+  }
 }
 ```
 
@@ -1419,55 +1358,19 @@ The geospatial data in Graph Fetch follows the GeoJSON Point format:
 **Conceptual places** (without coordinates) include:
 - downtown, homeless shelter, neighborhood, area, a great spot
 
-### Geospatial Query Capabilities
+## Data Flow Architecture
 
-While the current schema includes geospatial data, advanced spatial queries like:
-- `within()` for bounding box searches
-- `near()` for radius-based searches
-- `distance()` calculations
+```
+User Message → MCP Server → AI Service → Entity Extraction
+                    ↓
+                DgraphService → Store Entities & Memories
+                    ↓
+            [Optional] Python Service → Community Detection → Community Nodes
+                    ↓
+                DQL Queries ← Graph Memory Search ← Vector Similarity
+```
 
-May require additional geospatial indexing configuration in Dgraph. The current queries focus on:
-- **Location data retrieval** for places with coordinates
-- **Place-based memory search** using text matching
-- **Relationship analysis** between places and other entities
-- **Geographic context** for conversation analysis
-
-### Query Tips and Best Practices
-
-1. **Use filters efficiently**: Combine `@filter()` with `func: type()` for better performance
-2. **Limit results**: Add `(first: N)` to large queries to avoid overwhelming results
-3. **Leverage facets**: Use `@facets()` to get relationship metadata like weights
-4. **Combine queries**: Use multiple query blocks to get related information in one request
-5. **Index optimization**: Ensure frequently queried fields have appropriate indexes
-6. **Text search limitations**: `anyoftext()` only works on fulltext-indexed fields like `content`
-7. **Count aggregation**: Some count operations may not work as expected; use basic count queries instead
-8. **Geospatial queries**: Use `has(location)` to find entities with coordinates, `eq(name, "PlaceName")` for specific places
-9. **Place-based search**: Combine place queries with memory content search for location-aware conversation analysis
-10. **Coordinate format**: Geospatial data follows GeoJSON Point format with [longitude, latitude] coordinates
-
-### Example Query Workflow
-
-1. **Start with counts** to understand data volume (use basic count queries)
-2. **Explore entity types** to see what's available
-3. **Sample specific entities** to understand data quality
-4. **Analyze relationships** to discover patterns
-5. **Use temporal queries** to understand conversation flow
-6. **Apply text search** on content fields for concept discovery
-7. **Explore relationship networks** to understand entity connections
-8. **Discover geospatial data** by finding places with coordinates
-9. **Analyze location context** in conversations and memories
-10. **Combine spatial and semantic** data for rich location-aware insights
-
-### Known Limitations
-
-- **Fulltext indexing**: Only available on `content` field, not on `name` field
-- **Count aggregation**: Some complex count operations may not work as expected
-- **Shortest path**: May return empty results if no direct path exists between entities
-- **Text search**: Limited to fields with appropriate indexing
-- **Advanced geospatial**: Complex spatial queries like `within()`, `near()`, and `distance()` may require additional indexing
-- **Coordinate precision**: Current geospatial data limited to major cities (Paris, Rome) with conceptual places lacking coordinates
-
-These queries demonstrate the power of Graph Fetch's knowledge graph for exploring AI agent memory, understanding conversation patterns, and discovering meaningful relationships between entities. The actual results show rich conversational data with 134 entities and 85 memories spanning multiple conversations and topics.
+This architecture provides a complete pipeline from raw conversational data to sophisticated graph analytics, enabling AI agents to build, search, and analyze long-term semantic memory.
 
 ## References
 
