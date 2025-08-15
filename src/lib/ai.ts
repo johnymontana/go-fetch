@@ -37,13 +37,20 @@ export class AIService {
     console.log(`[AIService] Text preview: "${text.substring(0, 100)}${text.length > 100 ? '...' : ''}"`);
     
     const prompt = `
-      Analyze the following text and extract all entities (people, places, organizations, concepts, etc.).
-      For each entity, provide:
-      1. name: the exact name/mention in the text
-      2. type: the category (PERSON, PLACE, ORGANIZATION, CONCEPT, EVENT, etc.)
-      3. description: optional brief description if context is available
+      
+      <CURRENT_MESSAGE>
+            Text: "${text}"
+      </CURRENT_MESSAGE>
+            
+      Given the above conversation, extract entity nodes from the CURRENT MESSAGE that are explicitly or implicitly mentioned:
 
-      Text: "${text}"
+      Guidelines:
+      1. If available, extract the speaker/actor as the first node. The speaker is the part before the colon in each line of dialogue.
+      2. Extract other significant entities, concepts, or actors mentioned in the CURRENT MESSAGE.
+      3. DO NOT create nodes for relationships or actions.
+      4. DO NOT create nodes for temporal information like dates, times or years (these will be added to edges later).
+      5. Be as explicit as possible in your node names, using full names.
+      6. DO NOT extract entities mentioned only
     `;
 
     try {
@@ -108,6 +115,7 @@ export class AIService {
     console.log(`[AIService] Entities: ${entities.map(e => e.name).join(', ')}`);
     
     const entityList = entities.map(e => `${e.name} (${e.type})`).join(', ');
+    const relatedEntitiesList = relatedEntities.map(e => `${e.name} (${e.type})`).join(', ');
     const memoryContent = memories.map(m => m.content).join('\n\n');
     console.log(`[AIService] Memory content total length: ${memoryContent.length} characters`);
 
@@ -118,6 +126,9 @@ export class AIService {
       
       Related memories:
       ${memoryContent}
+
+      Related entities:
+      ${relatedEntitiesList}
       
       Provide a helpful summary that contextualizes these entities and their relationships.
     `;
@@ -175,8 +186,14 @@ export class AIService {
       2. toEntity: the name of the second entity (exactly as provided)  
       3. type: a brief description of how they are related (e.g., "works with", "located in", "member of", "discussed", "collaborated on")
       
-      Only include relationships that are clearly evident from the memory content.
-      Do not create speculative relationships.
+      Guidelines:
+      1. Extract facts only between the provided entities.
+      2. Each fact should represent a clear relationship between two DISTINCT nodes.
+      3. The relation_type should be a concise, all-caps description of the fact (e.g., LOVES, IS_FRIENDS_WITH, WORKS_FOR).
+      4. Provide a more detailed fact containing all relevant information.
+      5. Consider temporal aspects of relationships when relevant.
+      6. Only include relationships that are clearly evident from the memory content.
+      7. Do not create speculative relationships.
     `;
 
     try {
