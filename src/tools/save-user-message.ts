@@ -1,6 +1,6 @@
 import { DgraphService } from '../lib/dgraph.js';
 import { AIService } from '../lib/ai.js';
-import type { Entity, Memory } from '../types/index.js';
+import type { Entity, Memory, EntityRelationship } from '../types/index.js';
 
 export interface SaveUserMessageArgs {
   message: string;
@@ -108,7 +108,19 @@ export class SaveUserMessageTool {
       console.log(`[SaveUserMessage] Generating relationships between entities...`);
       const relationships = await this.aiService.extractEntityRelationships(extractedEntities, message);
       
+      let enrichedRelationships: EntityRelationship[] = [];
+
       if (relationships.length > 0) {
+        // Extract temporal information from relationships
+        console.log(`[SaveUserMessage] Extracting temporal information from relationships...`);
+        const currentTimestamp = new Date().toISOString();
+        enrichedRelationships = await this.aiService.extractTemporalInformation(
+          relationships,
+          message,
+          currentTimestamp
+        );
+        console.log(`[SaveUserMessage] Temporal information extracted for ${enrichedRelationships.length} relationships`);
+
         // Create mapping from entity names to UIDs for relationship storage
         const entityNameToUid = new Map<string, string>();
         allEntities.forEach(entity => {
@@ -117,9 +129,9 @@ export class SaveUserMessageTool {
           }
         });
         
-        console.log(`[SaveUserMessage] Saving ${relationships.length} relationships to database...`);
-        await this.dgraphService.saveEntityRelationships(relationships, entityNameToUid);
-        console.log(`[SaveUserMessage] Relationships saved successfully`);
+        console.log(`[SaveUserMessage] Saving ${enrichedRelationships.length} enriched relationships to database...`);
+        await this.dgraphService.saveEntityRelationships(enrichedRelationships, entityNameToUid);
+        console.log(`[SaveUserMessage] Enriched relationships saved successfully`);
       } else {
         console.log(`[SaveUserMessage] No relationships found to save`);
       }
@@ -131,10 +143,11 @@ export class SaveUserMessageTool {
       console.log(`[SaveUserMessage]   - New entities created: ${newEntitiesCreated}`);
       console.log(`[SaveUserMessage]   - Existing entities reused: ${existingEntitiesReused}`);
       console.log(`[SaveUserMessage]   - Relationships created: ${relationships.length}`);
+      console.log(`[SaveUserMessage]   - Enriched relationships with temporal data: ${enrichedRelationships?.length || 0}`);
       console.log(`[SaveUserMessage]   - Memory UID: ${memoryUid}`);
       console.log(`[SaveUserMessage]   - Processing time: ${processingTime}ms`);
       
-      return `Successfully saved message with ${extractedEntities.length} entities (${newEntitiesCreated} new) and ${relationships.length} relationships. Memory ID: ${memoryUid}`;
+      return `Successfully saved message with ${extractedEntities.length} entities (${newEntitiesCreated} new) and ${relationships.length} relationships (${enrichedRelationships?.length || 0} with temporal data). Memory ID: ${memoryUid}`;
 
     } catch (error) {
       const processingTime = Date.now() - startTime;

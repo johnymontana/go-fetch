@@ -43,6 +43,8 @@ export class DgraphService {
       location: geo @index(geo) .
       relatedTo: [uid] @reverse .
       relatedTo.type: string @index(exact, term) .
+      relatedTo.validAt: datetime @index(hour) .
+      relatedTo.invalidAt: datetime @index(hour) .
 
       type Entity {
         name
@@ -283,12 +285,22 @@ export class DgraphService {
 
         console.log(`[DgraphService] Creating relationship: ${relationship.fromEntity} [${fromUid}] -> ${relationship.toEntity} [${toUid}] (${relationship.type})`);
         
+        const relationshipData: any = {
+          uid: toUid,
+          "relatedTo|type": relationship.type
+        };
+
+        // Add temporal fields if they exist
+        if (relationship.validAt) {
+          relationshipData["relatedTo|validAt"] = relationship.validAt;
+        }
+        if (relationship.invalidAt) {
+          relationshipData["relatedTo|invalidAt"] = relationship.invalidAt;
+        }
+
         mutations.push({
           uid: fromUid,
-          relatedTo: {
-            uid: toUid,
-            "relatedTo|type": relationship.type
-          }
+          relatedTo: relationshipData
         });
       }
 

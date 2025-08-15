@@ -37,13 +37,20 @@ export class AIService {
     console.log(`[AIService] Text preview: "${text.substring(0, 100)}${text.length > 100 ? '...' : ''}"`);
     
     const prompt = `
-      Analyze the following text and extract all entities (people, places, organizations, concepts, etc.).
-      For each entity, provide:
-      1. name: the exact name/mention in the text
-      2. type: the category (PERSON, PLACE, ORGANIZATION, CONCEPT, EVENT, etc.)
-      3. description: optional brief description if context is available
+      
+      <CURRENT_MESSAGE>
+            Text: "${text}"
+      </CURRENT_MESSAGE>
+            
+      Given the above conversation, extract entity nodes from the CURRENT MESSAGE that are explicitly or implicitly mentioned:
 
-      Text: "${text}"
+      Guidelines:
+      1. If available, extract the speaker/actor as the first node. The speaker is the part before the colon in each line of dialogue.
+      2. Extract other significant entities, concepts, or actors mentioned in the CURRENT MESSAGE.
+      3. DO NOT create nodes for relationships or actions.
+      4. DO NOT create nodes for temporal information like dates, times or years (these will be added to edges later).
+      5. Be as explicit as possible in your node names, using full names.
+      6. DO NOT extract entities mentioned only
     `;
 
     try {
@@ -108,6 +115,7 @@ export class AIService {
     console.log(`[AIService] Entities: ${entities.map(e => e.name).join(', ')}`);
     
     const entityList = entities.map(e => `${e.name} (${e.type})`).join(', ');
+    const relatedEntitiesList = relatedEntities.map(e => `${e.name} (${e.type})`).join(', ');
     const memoryContent = memories.map(m => m.content).join('\n\n');
     console.log(`[AIService] Memory content total length: ${memoryContent.length} characters`);
 
@@ -118,6 +126,9 @@ export class AIService {
       
       Related memories:
       ${memoryContent}
+
+      Related entities:
+      ${relatedEntitiesList}
       
       Provide a helpful summary that contextualizes these entities and their relationships.
     `;
@@ -163,20 +174,26 @@ export class AIService {
 
     const entityList = entities.map(e => `${e.name} (${e.type})`).join(', ');
 
-    const prompt = `
+          const prompt = `
       Based on the following memory content and entities, identify relationships between the entities.
-      
+
       Memory: "${memoryContent}"
-      
+
       Entities: ${entityList}
-      
+
       For each relationship you identify, provide:
       1. fromEntity: the name of the first entity (exactly as provided)
-      2. toEntity: the name of the second entity (exactly as provided)  
+      2. toEntity: the name of the second entity (exactly as provided)
       3. type: a brief description of how they are related (e.g., "works with", "located in", "member of", "discussed", "collaborated on")
-      
-      Only include relationships that are clearly evident from the memory content.
-      Do not create speculative relationships.
+
+      Guidelines:
+      1. Extract facts only between the provided entities.
+      2. Each fact should represent a clear relationship between two DISTINCT nodes.
+      3. The relation_type should be a concise, all-caps description of the fact (e.g., LOVES, IS_FRIENDS_WITH, WORKS_FOR).
+      4. Provide a more detailed fact containing all relevant information.
+      5. Consider temporal aspects of relationships when relevant.
+      6. Only include relationships that are clearly evident from the memory content.
+      7. Do not create speculative relationships.
     `;
 
     try {
@@ -210,5 +227,93 @@ export class AIService {
       });
       return [];
     }
+  }
+
+  async extractTemporalInformation(
+    relationships: EntityRelationship[],
+    memoryContent: string,
+    referenceTimestamp: string
+  ): Promise<EntityRelationship[]> {
+    console.log(`[AIService] Extracting temporal information for ${relationships.length} relationships`);
+
+    if (relationships.length === 0) {
+      return relationships;
+    }
+
+    const enrichedRelationships: EntityRelationship[] = [];
+
+    for (const relationship of relationships) {
+      try {
+        console.log(`[AIService] Processing temporal information for relationship: ${relationship.fromEntity} -> ${relationship.toEntity} (${relationship.type})`);
+
+        const prompt = `
+<CURRENT MESSAGE>
+${memoryContent}
+</CURRENT MESSAGE>
+<REFERENCE TIMESTAMP>
+${referenceTimestamp}
+</REFERENCE TIMESTAMP>
+<FACT>
+${relationship.fromEntity} ${relationship.type} ${relationship.toEntity}
+</FACT>
+IMPORTANT: Only extract time information if it is part of the provided fact. Otherwise ignore the time mentioned.
+Make sure to do your best to determine the dates if only the relative time is mentioned. (eg 10 years ago, 2 mins ago)
+based on the provided reference timestamp
+If the relationship is not of spanning nature, but you are still able to determine the dates, set the valid_at only.
+Definitions:
+- valid_at: The date and time when the relationship described by the edge fact became true or was established.
+- invalid_at: The date and time when the relationship described by the edge fact stopped being true or ended.
+Task:
+Analyze the conversation and determine if there are dates that are part of the edge fact. Only set dates if they explicitly
+relate to the formation or alteration of the relationship itself.
+Guidelines:
+1. Use ISO 8601 format (YYYY-MM-DDTHH:MM:SS.SSSSSSZ) for datetimes.
+2. Use the reference timestamp as the current time when determining the valid_at and invalid_at dates.
+3. If the fact is written in the present tense, use the Reference Timestamp for the valid_at date
+4. If no temporal information is found that establishes or changes the relationship, leave the fields as null.
+5. Do not infer dates from related events. Only use dates that are directly stated to establish or change the relationship.
+6. For relative time mentions directly related to the relationship, calculate the actual datetime based on the reference
+timestamp.
+7. If only a date is mentioned without a specific time, use 00:00:00 (midnight) for that date.
+8. If only year is mentioned, use January 1st of that year at 00:00:00.
+9. Always include the time zone offset (use Z for UTC if no specific time zone is mentioned).
+
+Only respond with a valid JSON object in this format: {"validAt": "YYYY-MM-DDTHH:MM:SS.SSSSSSZ" | null, "invalidAt": "YYYY-MM-DDTHH:MM:SS.SSSSSSZ" | null}
+`;
+
+        console.log(`[AIService] Calling LLM for temporal extraction using model: ${this.config.llmModel}`);
+        const startTime = Date.now();
+
+        const { text } = await generateText({
+          model: this.provider(this.config.llmModel) as any,
+          prompt,
+        });
+
+        const llmTime = Date.now() - startTime;
+        console.log(`[AIService] Temporal extraction LLM response received in ${llmTime}ms`);
+        console.log(`[AIService] Raw temporal LLM response: ${text}`);
+
+        console.log(`[AIService] Parsing temporal JSON response...`);
+        const temporalData = JSON.parse(text);
+
+        const enrichedRelationship: EntityRelationship = {
+          ...relationship,
+          validAt: temporalData.validAt || undefined,
+          invalidAt: temporalData.invalidAt || undefined
+        };
+
+        enrichedRelationships.push(enrichedRelationship);
+
+        console.log(`[AIService] Enriched relationship: ${enrichedRelationship.fromEntity} -> ${enrichedRelationship.toEntity} (${enrichedRelationship.type}) - validAt: ${enrichedRelationship.validAt || 'null'}, invalidAt: ${enrichedRelationship.invalidAt || 'null'}`);
+
+      } catch (error) {
+        console.error(`[AIService] Temporal extraction failed for relationship ${relationship.fromEntity} -> ${relationship.toEntity}:`, error);
+        // If temporal extraction fails, keep the original relationship without temporal data
+        enrichedRelationships.push(relationship);
+      }
+    }
+
+    console.log(`[AIService] Successfully enriched ${enrichedRelationships.length} relationships with temporal information`);
+    return enrichedRelationships;
   }
 }
