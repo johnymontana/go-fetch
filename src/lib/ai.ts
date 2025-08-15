@@ -174,18 +174,18 @@ export class AIService {
 
     const entityList = entities.map(e => `${e.name} (${e.type})`).join(', ');
 
-    const prompt = `
+          const prompt = `
       Based on the following memory content and entities, identify relationships between the entities.
-      
+
       Memory: "${memoryContent}"
-      
+
       Entities: ${entityList}
-      
+
       For each relationship you identify, provide:
       1. fromEntity: the name of the first entity (exactly as provided)
-      2. toEntity: the name of the second entity (exactly as provided)  
+      2. toEntity: the name of the second entity (exactly as provided)
       3. type: a brief description of how they are related (e.g., "works with", "located in", "member of", "discussed", "collaborated on")
-      
+
       Guidelines:
       1. Extract facts only between the provided entities.
       2. Each fact should represent a clear relationship between two DISTINCT nodes.
@@ -227,5 +227,93 @@ export class AIService {
       });
       return [];
     }
+  }
+
+  async extractTemporalInformation(
+    relationships: EntityRelationship[],
+    memoryContent: string,
+    referenceTimestamp: string
+  ): Promise<EntityRelationship[]> {
+    console.log(`[AIService] Extracting temporal information for ${relationships.length} relationships`);
+
+    if (relationships.length === 0) {
+      return relationships;
+    }
+
+    const enrichedRelationships: EntityRelationship[] = [];
+
+    for (const relationship of relationships) {
+      try {
+        console.log(`[AIService] Processing temporal information for relationship: ${relationship.fromEntity} -> ${relationship.toEntity} (${relationship.type})`);
+
+        const prompt = `
+<CURRENT MESSAGE>
+${memoryContent}
+</CURRENT MESSAGE>
+<REFERENCE TIMESTAMP>
+${referenceTimestamp}
+</REFERENCE TIMESTAMP>
+<FACT>
+${relationship.fromEntity} ${relationship.type} ${relationship.toEntity}
+</FACT>
+IMPORTANT: Only extract time information if it is part of the provided fact. Otherwise ignore the time mentioned.
+Make sure to do your best to determine the dates if only the relative time is mentioned. (eg 10 years ago, 2 mins ago)
+based on the provided reference timestamp
+If the relationship is not of spanning nature, but you are still able to determine the dates, set the valid_at only.
+Definitions:
+- valid_at: The date and time when the relationship described by the edge fact became true or was established.
+- invalid_at: The date and time when the relationship described by the edge fact stopped being true or ended.
+Task:
+Analyze the conversation and determine if there are dates that are part of the edge fact. Only set dates if they explicitly
+relate to the formation or alteration of the relationship itself.
+Guidelines:
+1. Use ISO 8601 format (YYYY-MM-DDTHH:MM:SS.SSSSSSZ) for datetimes.
+2. Use the reference timestamp as the current time when determining the valid_at and invalid_at dates.
+3. If the fact is written in the present tense, use the Reference Timestamp for the valid_at date
+4. If no temporal information is found that establishes or changes the relationship, leave the fields as null.
+5. Do not infer dates from related events. Only use dates that are directly stated to establish or change the relationship.
+6. For relative time mentions directly related to the relationship, calculate the actual datetime based on the reference
+timestamp.
+7. If only a date is mentioned without a specific time, use 00:00:00 (midnight) for that date.
+8. If only year is mentioned, use January 1st of that year at 00:00:00.
+9. Always include the time zone offset (use Z for UTC if no specific time zone is mentioned).
+
+Only respond with a valid JSON object in this format: {"validAt": "YYYY-MM-DDTHH:MM:SS.SSSSSSZ" | null, "invalidAt": "YYYY-MM-DDTHH:MM:SS.SSSSSSZ" | null}
+`;
+
+        console.log(`[AIService] Calling LLM for temporal extraction using model: ${this.config.llmModel}`);
+        const startTime = Date.now();
+
+        const { text } = await generateText({
+          model: this.provider(this.config.llmModel) as any,
+          prompt,
+        });
+
+        const llmTime = Date.now() - startTime;
+        console.log(`[AIService] Temporal extraction LLM response received in ${llmTime}ms`);
+        console.log(`[AIService] Raw temporal LLM response: ${text}`);
+
+        console.log(`[AIService] Parsing temporal JSON response...`);
+        const temporalData = JSON.parse(text);
+
+        const enrichedRelationship: EntityRelationship = {
+          ...relationship,
+          validAt: temporalData.validAt || undefined,
+          invalidAt: temporalData.invalidAt || undefined
+        };
+
+        enrichedRelationships.push(enrichedRelationship);
+
+        console.log(`[AIService] Enriched relationship: ${enrichedRelationship.fromEntity} -> ${enrichedRelationship.toEntity} (${enrichedRelationship.type}) - validAt: ${enrichedRelationship.validAt || 'null'}, invalidAt: ${enrichedRelationship.invalidAt || 'null'}`);
+
+      } catch (error) {
+        console.error(`[AIService] Temporal extraction failed for relationship ${relationship.fromEntity} -> ${relationship.toEntity}:`, error);
+        // If temporal extraction fails, keep the original relationship without temporal data
+        enrichedRelationships.push(relationship);
+      }
+    }
+
+    console.log(`[AIService] Successfully enriched ${enrichedRelationships.length} relationships with temporal information`);
+    return enrichedRelationships;
   }
 }

@@ -7,11 +7,14 @@ const mockDgraphService = {
   findEntitiesByName: jest.fn(),
   saveEntity: jest.fn(),
   saveMemory: jest.fn(),
+  saveEntityRelationships: jest.fn(),
 } as any;
 
 const mockAIService = {
   extractEntities: jest.fn(),
   generateEmbedding: jest.fn(),
+  extractEntityRelationships: jest.fn(),
+  extractTemporalInformation: jest.fn(),
 } as any;
 
 describe('SaveUserMessageTool', () => {
@@ -31,16 +34,34 @@ describe('SaveUserMessageTool', () => {
       mockDgraphService.saveEntity.mockResolvedValue('entity-uid-1');
       mockDgraphService.saveMemory.mockResolvedValue('memory-uid-1');
 
+      // Mock relationship extraction
+      const mockRelationships = [
+        { fromEntity: 'John Doe', toEntity: 'TechCorp', type: 'WORKS_AT' }
+      ];
+      mockAIService.extractEntityRelationships.mockResolvedValue(mockRelationships);
+
+      // Mock temporal information extraction
+      const mockEnrichedRelationships = [
+        { fromEntity: 'John Doe', toEntity: 'TechCorp', type: 'WORKS_AT', validAt: '2024-01-01T00:00:00.000Z' }
+      ];
+      mockAIService.extractTemporalInformation.mockResolvedValue(mockEnrichedRelationships);
+
+      mockDgraphService.saveEntityRelationships.mockResolvedValue(undefined);
+
       const args = { message: 'John Doe works at TechCorp as a software engineer.' };
       const result = await tool.execute(args);
 
       expect(result).toContain('Successfully saved message with 2 entities (2 new)');
       expect(result).toContain('Memory ID: memory-uid-1');
+      expect(result).toContain('1 with temporal data');
       
       expect(mockAIService.extractEntities).toHaveBeenCalledWith(args.message);
       expect(mockDgraphService.findEntitiesByName).toHaveBeenCalledWith(['John Doe', 'TechCorp']);
       expect(mockDgraphService.saveEntity).toHaveBeenCalledTimes(2);
       expect(mockDgraphService.saveMemory).toHaveBeenCalledTimes(1);
+      expect(mockAIService.extractEntityRelationships).toHaveBeenCalledWith(mockExtractedEntities, args.message);
+      expect(mockAIService.extractTemporalInformation).toHaveBeenCalledWith(mockRelationships, args.message, expect.any(String));
+      expect(mockDgraphService.saveEntityRelationships).toHaveBeenCalledWith(mockEnrichedRelationships, expect.any(Map));
     });
 
     it('should reuse existing entities', async () => {
@@ -49,6 +70,9 @@ describe('SaveUserMessageTool', () => {
       mockDgraphService.findEntitiesByName.mockResolvedValue([mockEntity]);
       mockAIService.generateEmbedding.mockResolvedValue(mockEmbedding);
       mockDgraphService.saveMemory.mockResolvedValue('memory-uid-1');
+
+      // Mock relationship extraction (no relationships in this case)
+      mockAIService.extractEntityRelationships.mockResolvedValue([]);
 
       const args = { message: 'Met with John Doe again.' };
       const result = await tool.execute(args);
