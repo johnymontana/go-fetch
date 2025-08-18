@@ -39,4 +39,6 @@ export interface EntityRelationship {
   fromEntity: string;
   toEntity: string;
   type: string;
+  validAt?: string; // ISO 8601 datetime when relationship became true
+  invalidAt?: string; // ISO 8601 datetime when relationship stopped being true
 }
