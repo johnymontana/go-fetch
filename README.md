@@ -2,13 +2,13 @@
 
 ![fetch logo](img/fetch.png)
 
-An MCP (Model Context Protocol) server that provides graph-based memory tools for AI agents using Dgraph as the backend database. Includes specialized tooling for ingesting and benchmarking against the Locomo-10 AI agent memory dataset. Built with TypeScript, Vercel AI SDK, and the Vercel MCP adapter.
+An MCP (Model Context Protocol) server that provides graph-based memory tools for AI agents using either **Dgraph** or **Neo4j** as the backend database. Features a unified database interface with automatic schema management and vector indexing for both graph databases. Includes specialized tooling for ingesting and benchmarking against the Locomo-10 AI agent memory dataset. Built with TypeScript, Vercel AI SDK, and the Vercel MCP adapter.
 
 ## Features
 
 - **Entity Extraction**: Automatically extracts entities from user messages using LLMs
 - **Vector Search**: Semantic search through memories using embeddings
-- **Graph Relationships**: Stores entities and memories with relationships in Dgraph
+- **Graph Relationships**: Stores entities and memories with relationships in Dgraph or Neo4j
 - **Graph Algorithms**: Analyzes graph structure (community detection and centrality)
 - **Locomo Benchmark Integration**: Purpose-built ingestion for AI agent memory benchmarking
 - **Two MCP Tools**:
@@ -21,19 +21,59 @@ An MCP (Model Context Protocol) server that provides graph-based memory tools fo
 
 ![fetch data model](img/fetch-schema.png)
 
+### Database Schema Comparison
+
+Both Dgraph and Neo4j support the same logical data model with different implementations:
+
+#### Dgraph Schema
+- **Entity nodes** with vector embeddings for semantic search
+- **Memory nodes** linked to entities via relationships
+- **HNSW vector index** for efficient similarity search
+- **Faceted relationships** with type and temporal metadata
+
+#### Neo4j Schema
+- **`:Entity` nodes** with vector embeddings for semantic search
+- **`:Memory` nodes** connected to entities via `:RELATES_TO` relationships
+- **Entity relationships** via `:RELATED_TO` relationships with type and temporal properties
+- **Vector indexes** on embedding properties (requires Neo4j 5.11+)
+- **Constraints and indexes** on entity names and types
+
+**Key Differences:**
+- **Neo4j** uses labeled property graph model with explicit relationship types (`:RELATES_TO`, `:RELATED_TO`)
+- **Dgraph** uses RDF-style predicates with faceted edges for metadata
+- **Neo4j** requires explicit schema creation with constraints and indexes
+- **Dgraph** infers schema automatically from data mutations
+
 ## Prerequisites
 
 - Node.js 20+
-- Dgraph database instance (local or cloud)
+- **Database** (choose one):
+  - **Dgraph** database instance (local or cloud)
+  - **Neo4j** database instance (local or cloud) - requires Neo4j 5.11+ for vector indexing
 - OpenAI or Anthropic API key
 
-## Dgraph Connection
+## Database Configuration
+
+### Dgraph Connection
 
 The project uses standard Dgraph connection strings with `dgraph.open()`:
 
 - **Local**: `dgraph://localhost:9080`
 - **With auth**: `dgraph://user:password@localhost:9080`
 - **Cloud**: `dgraph://your-instance.cloud:443?sslmode=verify-ca&bearertoken=your-token`
+
+### Neo4j Connection
+
+The project uses standard Neo4j connection URIs with the Neo4j driver:
+
+- **Local (no auth)**: `bolt://localhost:7687`
+- **Local with auth**: `bolt://localhost:7687` + `NEO4J_USERNAME`/`NEO4J_PASSWORD` environment variables
+- **Neo4j AuraDB**: `neo4j+s://your-instance.databases.neo4j.io` + username/password
+- **Local HTTP**: `http://localhost:7474`
+
+**Requirements:**
+- Neo4j 5.11+ (for vector indexing support)
+- APOC plugin (recommended for advanced operations)
 
 ## Setup
 
@@ -47,8 +87,9 @@ The project uses standard Dgraph connection strings with `dgraph.open()`:
    cp .env.example .env
    ```
    
-   Edit `.env` with your configuration:
+   **For Dgraph (default)**:
    ```env
+   DATABASE_TYPE=dgraph
    DGRAPH_CONNECTION_STRING=dgraph://localhost:9080
    AI_PROVIDER=openai
    OPENAI_API_KEY=your_openai_api_key
@@ -56,14 +97,44 @@ The project uses standard Dgraph connection strings with `dgraph.open()`:
    LLM_MODEL=gpt-4o-mini
    ```
 
-   For cloud instances, use the full connection string:
+   **For Neo4j**:
    ```env
-   DGRAPH_CONNECTION_STRING=dgraph://your-instance.cloud:443?sslmode=verify-ca&bearertoken=your-token
+   DATABASE_TYPE=neo4j
+   NEO4J_URI=bolt://localhost:7687
+   NEO4J_USERNAME=neo4j
+   NEO4J_PASSWORD=password
+   AI_PROVIDER=openai
+   OPENAI_API_KEY=your_openai_api_key
+   EMBEDDING_MODEL=text-embedding-3-small
+   LLM_MODEL=gpt-4o-mini
    ```
 
-3. **Start Dgraph** (if running locally):
+   **For cloud instances**:
+   ```env
+   # Dgraph Cloud
+   DATABASE_TYPE=dgraph
+   DGRAPH_CONNECTION_STRING=dgraph://your-instance.cloud:443?sslmode=verify-ca&bearertoken=your-token
+   
+   # Neo4j AuraDB
+   DATABASE_TYPE=neo4j
+   NEO4J_URI=neo4j+s://your-instance.databases.neo4j.io
+   NEO4J_USERNAME=neo4j
+   NEO4J_PASSWORD=your-auradb-password
+   ```
+
+3. **Start your database** (if running locally):
+   
+   **For Dgraph**:
    ```bash
    docker run --rm -it -p 8080:8080 -p 9080:9080 -p 8000:8000 dgraph/standalone:latest
+   ```
+   
+   **For Neo4j** (with APOC plugin for enhanced functionality):
+   ```bash
+   docker run --rm -it -p 7474:7474 -p 7687:7687 \
+     -e NEO4J_AUTH=neo4j/password \
+     -e NEO4J_PLUGINS='["apoc"]' \
+     neo4j:5.15
    ```
 
 ## Development
@@ -116,9 +187,19 @@ The [MCP Inspector](https://github.com/modelcontextprotocol/inspector) is a debu
    npm install -g @modelcontextprotocol/inspector
    ```
 
-2. **Start Dgraph** (if testing with real database):
+2. **Start your database** (if testing with real database):
+   
+   **For Dgraph**:
    ```bash
    docker run --rm -it -p 8080:8080 -p 9080:9080 -p 8000:8000 dgraph/standalone:latest
+   ```
+   
+   **For Neo4j**:
+   ```bash
+   docker run --rm -it -p 7474:7474 -p 7687:7687 \
+     -e NEO4J_AUTH=neo4j/password \
+     -e NEO4J_PLUGINS='["apoc"]' \
+     neo4j:5.15
    ```
 
 3. **Configure your API keys** in `.env`:
@@ -173,17 +254,23 @@ The [MCP Inspector](https://github.com/modelcontextprotocol/inspector) is a debu
 
 - **Connection issues**: Ensure the server builds successfully with `npm run build`
 - **API errors**: Verify your AI provider API key is correctly set in `.env`
-- **Database errors**: Make sure Dgraph is running and accessible on the configured port (`docker run --rm -it -p 8080:8080 -p 9080:9080 -p 8000:8000 dgraph/standalone:latest`)
+- **Database errors**: Make sure your database is running and accessible:
+  - **Dgraph**: `docker run --rm -it -p 8080:8080 -p 9080:9080 -p 8000:8000 dgraph/standalone:latest`
+  - **Neo4j**: `docker run --rm -it -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/password neo4j:5.15`
 - **Tool errors**: Check the inspector console and server logs for detailed error messages
-- **Server startup fails**: The MCP server requires Dgraph to be running to initialize. Start Dgraph before testing the server
+- **Server startup fails**: The MCP server requires the database to be running to initialize. Start your database before testing the server
 
 ### Manual Testing
 
 You can also test the server manually using stdio:
 
 ```bash
-# Start Dgraph (in separate terminal)
+# Start your database (in separate terminal)
+# For Dgraph:
 docker run --rm -it -p 8080:8080 -p 9080:9080 -p 8000:8000 dgraph/standalone:latest
+
+# For Neo4j:
+docker run --rm -it -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/password neo4j:5.15
 
 # Build and start the server (in main terminal)
 npm run build
@@ -192,22 +279,43 @@ echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}' | node dist/index.js
 
 ### Quick Testing Workflow
 
-Here's a complete workflow to test the MCP server:
-
+#### For Dgraph (default)
 ```bash
 # 1. Start Dgraph
 docker run --rm -it -p 8080:8080 -p 9080:9080 -p 8000:8000 dgraph/standalone:latest
 
-# 2. In a new terminal, build the project
+# 2. Build project
 npm run build
 
-# 3. Start MCP Inspector
+# 3. Launch MCP Inspector
 npm run inspector
-
-# 4. Open the inspector in your browser (usually http://localhost:3000)
-# 5. Configure connection with: node dist/index.js
-# 6. Test the tools with sample data
 ```
+
+#### For Neo4j
+```bash
+# 1. Start Neo4j (with APOC plugin for vector operations)
+docker run --rm -it -p 7474:7474 -p 7687:7687 \
+    -e NEO4J_AUTH=neo4j/password \
+    -e NEO4J_PLUGINS='["apoc"]' \
+    neo4j:5.15
+
+# 2. Set environment variables
+export DATABASE_TYPE=neo4j
+export NEO4J_URI=bolt://localhost:7687
+export NEO4J_USERNAME=neo4j
+export NEO4J_PASSWORD=password
+
+# 3. Build project
+npm run build
+
+# 4. Launch MCP Inspector
+npm run inspector
+```
+
+#### Using the Inspector
+1. Open the inspector in your browser (usually http://localhost:3000)
+2. Configure connection with: `node dist/index.js`
+3. Test the tools with sample data
 
 ## Testing
 
@@ -263,7 +371,9 @@ npm run test:ci
 1. Install Vercel CLI: `npm i -g vercel`
 2. Deploy: `vercel`
 3. Set environment variables in Vercel dashboard
-4. Configure Dgraph Cloud or hosted Dgraph instance
+4. Configure your database backend:
+   - **Dgraph Cloud**: Set `DATABASE_TYPE=dgraph` and `DGRAPH_CONNECTION_STRING`
+   - **Neo4j AuraDB**: Set `DATABASE_TYPE=neo4j`, `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD`
 
 ## MCP Tools
 
@@ -303,6 +413,7 @@ Graph Fetch includes a specialized ingestion script for the **Locomo-10** AI age
 
 ### Quick Start
 
+**For Dgraph:**
 ```bash
 # 1. Start Dgraph and MCP server
 docker run --rm -it -p 8080:8080 -p 9080:9080 -p 8000:8000 dgraph/standalone:latest
@@ -310,9 +421,17 @@ npm run build && npm start
 
 # 2. Test with small sample
 node scripts/ingest-locomo.js --max-conversations 1 --max-sessions 1 --max-messages 5
+```
 
-# 3. Process larger batches
-node scripts/ingest-locomo.js --max-conversations 2 --max-sessions 3 --max-messages 10
+**For Neo4j:**
+```bash
+# 1. Start Neo4j and MCP server
+docker run --rm -it -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/password neo4j:5.15
+export DATABASE_TYPE=neo4j NEO4J_URI=bolt://localhost:7687 NEO4J_USERNAME=neo4j NEO4J_PASSWORD=password
+npm run build && npm start
+
+# 2. Test with small sample
+node scripts/ingest-locomo.js --max-conversations 1 --max-sessions 1 --max-messages 5
 ```
 
 ### Dataset Overview
@@ -452,7 +571,10 @@ Graph Fetch consists of a TypeScript MCP server for AI agent memory operations a
 fetch/
 ├── src/                              # TypeScript MCP server source code
 │   ├── lib/
+│   │   ├── database-factory.ts       # Database service factory for Dgraph/Neo4j selection
+│   │   ├── database-interface.ts     # Common interface for database operations
 │   │   ├── dgraph.ts                 # Dgraph database operations and schema management
+│   │   ├── neo4j.ts                  # Neo4j database operations and schema management
 │   │   └── ai.ts                     # AI operations (entity extraction, embeddings, summaries)
 │   ├── tools/
 │   │   ├── save-user-message.ts      # MCP tool for processing and saving user messages
@@ -464,7 +586,9 @@ fetch/
 │   ├── __tests__/                    # Unit tests alongside source code
 │   │   ├── lib/
 │   │   │   ├── ai.test.ts            # AIService unit tests with mocked providers
-│   │   │   └── dgraph.test.ts        # DgraphService tests with mocked database
+│   │   │   ├── dgraph.test.ts        # DgraphService tests with mocked database
+│   │   │   ├── neo4j.test.ts         # Neo4jService tests with mocked database
+│   │   │   └── database-factory.test.ts # Database factory tests
 │   │   └── tools/
 │   │       ├── save-user-message.test.ts      # Save message tool integration tests
 │   │       └── graph-memory-search.test.ts    # Search tool functionality tests
@@ -535,12 +659,29 @@ fetch/
 ### TypeScript MCP Server
 
 #### Core Services
+- **`src/lib/database-factory.ts`**: `createDatabaseService()` factory function
+  - Selects between Dgraph and Neo4j based on `DATABASE_TYPE` configuration
+  - Returns appropriate database service implementing common interface
+  - Validates configuration and throws helpful error messages
+
+- **`src/lib/database-interface.ts`**: `DatabaseService` interface
+  - Common interface for database operations across Dgraph and Neo4j
+  - Standardizes methods: `initialize()`, `saveEntity()`, `saveMemory()`, `vectorSearch()`
+  - Enables database-agnostic tool implementations
+
 - **`src/lib/dgraph.ts`**: `DgraphService` class handling all Dgraph database operations
   - Connection management with `dgraph.open()` connection strings
   - Schema initialization and management (Entity, Memory, Community types)
   - CRUD operations for entities, memories, and relationships
   - Vector similarity search using HNSW index
   - Faceted relationship storage with metadata
+
+- **`src/lib/neo4j.ts`**: `Neo4jService` class handling all Neo4j database operations
+  - Connection management with Neo4j driver and authentication
+  - Schema creation with constraints, indexes, and vector indexes
+  - CRUD operations for entities and memories using Cypher queries
+  - Vector similarity search using Neo4j 5.11+ vector indexes
+  - Labeled property graph with `:RELATES_TO` and `:RELATED_TO` relationships
   
 - **`src/lib/ai.ts`**: `AIService` class for AI operations using Vercel AI SDK
   - Multi-provider support (OpenAI, Anthropic) with automatic provider switching
@@ -646,7 +787,139 @@ fetch/
 
 
 
-## Example Agent Memory DQL Queries
+## Example Agent Memory Queries
+
+Graph Fetch creates a rich knowledge graph that you can explore using either Neo4j's Cypher or Dgraph's DQL query languages. Here are practical examples for both databases.
+
+## Neo4j Cypher Queries
+
+Neo4j uses Cypher, a declarative query language designed for property graphs. Here are practical examples to explore your agent memory data:
+
+### 1. Basic Data Exploration
+
+**Count entities and memories:**
+```cypher
+// Count all entities and memories
+MATCH (e:Entity) 
+WITH count(e) as entityCount
+MATCH (m:Memory) 
+WITH entityCount, count(m) as memoryCount
+RETURN entityCount, memoryCount
+```
+
+**Get entity type distribution:**
+```cypher
+MATCH (e:Entity)
+RETURN e.type as entityType, count(*) as count
+ORDER BY count DESC
+```
+
+### 2. Entity and Relationship Analysis
+
+**Find highly connected entities:**
+```cypher
+MATCH (e:Entity)-[r:RELATED_TO]-()
+WITH e, count(r) as connectionCount
+WHERE connectionCount > 5
+RETURN e.name, e.type, connectionCount
+ORDER BY connectionCount DESC
+LIMIT 10
+```
+
+**Find memories mentioning specific people:**
+```cypher
+MATCH (m:Memory)-[:RELATES_TO]->(e:Entity {type: "PERSON"})
+WHERE e.name CONTAINS "Caroline"
+RETURN m.content as memoryContent, m.timestamp as timestamp, e.name as personName
+ORDER BY m.timestamp
+```
+
+### 3. Semantic Search with Vector Similarity
+
+**Vector similarity search (requires embedding parameter):**
+```cypher
+CALL db.index.vector.queryNodes('entity_embedding_index', 5, $queryEmbedding)
+YIELD node as e, score
+MATCH (e)<-[:RELATES_TO]-(m:Memory)
+RETURN e.name, e.type, e.description, score, collect(m.content) as relatedMemories
+ORDER BY score DESC
+```
+
+### 4. Temporal Analysis
+
+**Find recent memories:**
+```cypher
+MATCH (m:Memory)
+WHERE m.timestamp > datetime('2023-01-01T00:00:00Z')
+RETURN m.content, m.timestamp
+ORDER BY m.timestamp DESC
+LIMIT 10
+```
+
+**Timeline of entity creation:**
+```cypher
+MATCH (e:Entity)
+RETURN e.name, e.type, e.createdAt
+ORDER BY e.createdAt DESC
+LIMIT 20
+```
+
+### 5. Relationship Path Analysis
+
+**Find paths between entities:**
+```cypher
+MATCH (start:Entity {name: "Caroline"}), (end:Entity {name: "LGBTQ"})
+MATCH path = shortestPath((start)-[*1..4]-(end))
+RETURN path
+```
+
+**Find common connections between entities:**
+```cypher
+MATCH (e1:Entity {name: "Caroline"})-[:RELATED_TO]->(common)<-[:RELATED_TO]-(e2:Entity)
+WHERE e1 <> e2 AND e2.name <> "Caroline"
+RETURN e2.name as connectedEntity, common.name as commonConnection, common.type
+ORDER BY connectedEntity
+```
+
+### 6. Memory Content Analysis
+
+**Search memories by content:**
+```cypher
+MATCH (m:Memory)
+WHERE m.content CONTAINS "dance" OR m.content CONTAINS "dancing"
+RETURN m.content, m.timestamp
+ORDER BY m.timestamp
+```
+
+**Find memories related to specific concepts:**
+```cypher
+MATCH (m:Memory)-[:RELATES_TO]->(e:Entity {type: "CONCEPT"})
+WHERE e.name IN ["dance", "education", "LGBTQ"]
+RETURN m.content, e.name as concept, m.timestamp
+ORDER BY m.timestamp
+```
+
+### 7. Complex Aggregations
+
+**Entity relationship statistics:**
+```cypher
+MATCH (e:Entity)-[r:RELATED_TO]->(related:Entity)
+WITH e, r.type as relType, count(related) as relatedCount
+RETURN e.name, e.type, relType, relatedCount
+ORDER BY relatedCount DESC
+LIMIT 20
+```
+
+**Memory-entity connection analysis:**
+```cypher
+MATCH (m:Memory)-[:RELATES_TO]->(e:Entity)
+WITH m, count(e) as entityCount, collect(DISTINCT e.type) as entityTypes
+WHERE entityCount > 3
+RETURN m.content, entityCount, entityTypes, m.timestamp
+ORDER BY entityCount DESC
+```
+
+## Dgraph DQL Queries
 
 Graph Fetch creates a rich knowledge graph that you can explore using Dgraph's DQL (Dgraph Query Language). Here are practical examples of queries to explore your agent memory data, tested and verified with actual results.
 
@@ -1363,14 +1636,23 @@ The geospatial data in Graph Fetch follows the GeoJSON Point format:
 ```
 User Message → MCP Server → AI Service → Entity Extraction
                     ↓
-                DgraphService → Store Entities & Memories
+          Database Factory → DatabaseService Interface
+                    ↓                    ↓
+            DgraphService        Neo4jService
+                    ↓                    ↓
+          Store Entities & Memories in Dgraph or Neo4j
                     ↓
             [Optional] Python Service → Community Detection → Community Nodes
                     ↓
-                DQL Queries ← Graph Memory Search ← Vector Similarity
+        DQL/Cypher Queries ← Graph Memory Search ← Vector Similarity
 ```
 
-This architecture provides a complete pipeline from raw conversational data to sophisticated graph analytics, enabling AI agents to build, search, and analyze long-term semantic memory.
+This architecture provides:
+- **Database Abstraction**: Unified interface supporting both Dgraph and Neo4j
+- **Runtime Selection**: Choose database backend via environment configuration
+- **Complete Pipeline**: From raw conversational data to sophisticated graph analytics
+- **Dual Query Support**: Both DQL (Dgraph) and Cypher (Neo4j) query examples
+- **AI Agent Memory**: Enables building, searching, and analyzing long-term semantic memory
 
 ## References
 

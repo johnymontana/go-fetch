@@ -1,8 +1,9 @@
 import * as dgraph from "dgraph-js";
 import { Mutation, Operation } from "dgraph-js";
 import type { DgraphConfig, Entity, Memory, EntityRelationship } from "../types/index.js";
+import type { DatabaseService } from "./database-interface.js";
 
-export class DgraphService {
+export class DgraphService implements DatabaseService {
   private client: dgraph.DgraphClient | null = null;
 
   constructor(private config: DgraphConfig) {

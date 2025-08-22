@@ -1,4 +1,4 @@
-import { DgraphService } from '../lib/dgraph.js';
+import type { DatabaseService } from '../lib/database-interface.js';
 import { AIService } from '../lib/ai.js';
 import type { SearchResult } from '../types/index.js';
 
@@ -9,7 +9,7 @@ export interface GraphMemorySearchArgs {
 
 export class GraphMemorySearchTool {
   constructor(
-    private readonly dgraphService: DgraphService,
+    private readonly databaseService: DatabaseService,
     private readonly aiService: AIService
   ) {}
 
@@ -24,8 +24,8 @@ export class GraphMemorySearchTool {
       // Generate embedding for the search query
       const queryEmbedding = await this.aiService.generateEmbedding(query);
 
-      // Perform vector search in Dgraph
-      const entities = await this.dgraphService.vectorSearch(queryEmbedding, limit);
+      // Perform vector search in the database
+      const entities = await this.databaseService.vectorSearch(queryEmbedding, limit);
 
       if (entities.length === 0) {
         return 'No relevant memories found for your query.';
@@ -33,7 +33,7 @@ export class GraphMemorySearchTool {
 
       // Process results to calculate similarity and structure data
       const searchResults: SearchResult[] = entities.map((entity: any) => {
-        // Calculate cosine similarity (simplified - Dgraph already ranks by similarity)
+        // Calculate cosine similarity (database already ranks by similarity)
         const similarity = this.calculateCosineSimilarity(queryEmbedding, entity.embedding || []);
         
         return {

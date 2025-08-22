@@ -7,20 +7,30 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { DgraphService } from './lib/dgraph.js';
+import { createDatabaseService } from './lib/database-factory.js';
 import { AIService } from './lib/ai.js';
 import { SaveUserMessageTool } from './tools/save-user-message.js';
 import { GraphMemorySearchTool } from './tools/graph-memory-search.js';
-import type { DgraphConfig, AIConfig } from './types/index.js';
+import type { DatabaseConfig, AIConfig } from './types/index.js';
 
 // Load environment variables from .env file
 dotenv.config();
 
 // Load environment variables
+const databaseType = (process.env.DATABASE_TYPE || 'dgraph') as 'dgraph' | 'neo4j';
+
 const config = {
-  dgraph: {
-    connectionString: process.env.DGRAPH_CONNECTION_STRING || 'dgraph://localhost:9080',
-  } as DgraphConfig,
+  database: {
+    type: databaseType,
+    dgraph: databaseType === 'dgraph' ? {
+      connectionString: process.env.DGRAPH_CONNECTION_STRING || 'dgraph://localhost:9080',
+    } : undefined,
+    neo4j: databaseType === 'neo4j' ? {
+      uri: process.env.NEO4J_URI || 'bolt://localhost:7687',
+      username: process.env.NEO4J_USERNAME,
+      password: process.env.NEO4J_PASSWORD,
+    } : undefined,
+  } as DatabaseConfig,
   ai: {
     provider: process.env.AI_PROVIDER || 'openai',
     apiKey: process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || '',
@@ -41,7 +51,12 @@ if (!config.ai.apiKey) {
 console.log(`[${new Date().toISOString()}] Configuration loaded:`);
 console.log(`[${new Date().toISOString()}] - MCP Timeout: ${config.server.mcpTimeout}ms (${config.server.mcpTimeout / 1000}s)`);
 console.log(`[${new Date().toISOString()}] - AI Provider: ${config.ai.provider}`);
-console.log(`[${new Date().toISOString()}] - Dgraph: ${config.dgraph.connectionString.replace(/bearertoken=[^&?]*/g, 'bearertoken=***')}`);
+console.log(`[${new Date().toISOString()}] - Database Type: ${config.database.type}`);
+if (config.database.type === 'dgraph' && config.database.dgraph) {
+  console.log(`[${new Date().toISOString()}] - Dgraph: ${config.database.dgraph.connectionString.replace(/bearertoken=[^&?]*/g, 'bearertoken=***')}`);
+} else if (config.database.type === 'neo4j' && config.database.neo4j) {
+  console.log(`[${new Date().toISOString()}] - Neo4j: ${config.database.neo4j.uri}`);
+}
 
 // Timeout wrapper function
 async function withTimeout<T>(
@@ -59,12 +74,12 @@ async function withTimeout<T>(
 }
 
 // Initialize services
-const dgraphService = new DgraphService(config.dgraph);
+const databaseService = createDatabaseService(config.database);
 const aiService = new AIService(config.ai);
 
 // Initialize tools
-const saveUserMessageTool = new SaveUserMessageTool(dgraphService, aiService);
-const graphMemorySearchTool = new GraphMemorySearchTool(dgraphService, aiService);
+const saveUserMessageTool = new SaveUserMessageTool(databaseService, aiService);
+const graphMemorySearchTool = new GraphMemorySearchTool(databaseService, aiService);
 
 // Create MCP server
 const server = new Server(
@@ -85,7 +100,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: 'save_user_message',
-        description: 'Save a user message with entity extraction and relationship mapping to Dgraph',
+        description: 'Save a user message with entity extraction and relationship mapping to the graph database',
         inputSchema: {
           type: 'object',
           properties: {
@@ -180,13 +195,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-// Initialize Dgraph schema on startup
+// Initialize database schema on startup
 async function initialize(): Promise<void> {
   try {
-    await dgraphService.initialize();
-    console.log('Dgraph schema initialized successfully');
+    await databaseService.initialize();
+    console.log(`${config.database.type.charAt(0).toUpperCase() + config.database.type.slice(1)} schema initialized successfully`);
   } catch (error) {
-    console.error('Failed to initialize Dgraph schema:', error);
+    console.error(`Failed to initialize ${config.database.type} schema:`, error);
     process.exit(1);
   }
 }
@@ -302,10 +317,10 @@ async function startServer(): Promise<void> {
 process.on('SIGINT', async () => {
   console.error(`[${getTimestamp()}] Received SIGINT, shutting down gracefully...`);
   try {
-    await dgraphService.close();
-    console.error(`[${getTimestamp()}] Dgraph connection closed successfully`);
+    await databaseService.close();
+    console.error(`[${getTimestamp()}] Database connection closed successfully`);
   } catch (error) {
-    console.error(`[${getTimestamp()}] Error closing Dgraph connection:`, error);
+    console.error(`[${getTimestamp()}] Error closing database connection:`, error);
   }
   console.error(`[${getTimestamp()}] Server shutdown complete`);
   process.exit(0);
@@ -314,10 +329,10 @@ process.on('SIGINT', async () => {
 process.on('SIGTERM', async () => {
   console.error(`[${getTimestamp()}] Received SIGTERM, shutting down gracefully...`);
   try {
-    await dgraphService.close();
-    console.error(`[${getTimestamp()}] Dgraph connection closed successfully`);
+    await databaseService.close();
+    console.error(`[${getTimestamp()}] Database connection closed successfully`);
   } catch (error) {
-    console.error(`[${getTimestamp()}] Error closing Dgraph connection:`, error);
+    console.error(`[${getTimestamp()}] Error closing database connection:`, error);
   }
   console.error(`[${getTimestamp()}] Server shutdown complete`);
   process.exit(0);

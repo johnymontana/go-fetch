@@ -61,6 +61,16 @@ export const mockSearchResults = [
         timestamp: '2024-01-02T00:00:00.000Z',
       },
     ],
+    relatedTo: [
+      {
+        uid: 'related-entity-1',
+        name: 'TechCorp',
+        type: 'ORGANIZATION',
+        description: 'Technology company',
+        createdAt: '2024-01-01T00:00:00.000Z',
+        embedding: [0.2, 0.3, 0.4, 0.5, 0.6],
+      },
+    ],
   },
 ];
 

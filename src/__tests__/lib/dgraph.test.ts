@@ -165,7 +165,7 @@ describe('DgraphService', () => {
 
       expect(result).toEqual(mockEntities);
       expect(mockTxn.queryWithVars).toHaveBeenCalledWith(
-        expect.stringContaining('func: eq(name, $names)'),
+        expect.stringContaining('func: anyofterms(name, $names)'),
         expect.objectContaining({ $names: JSON.stringify(['John Doe']) })
       );
     });

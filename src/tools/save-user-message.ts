@@ -1,4 +1,4 @@
-import { DgraphService } from '../lib/dgraph.js';
+import type { DatabaseService } from '../lib/database-interface.js';
 import { AIService } from '../lib/ai.js';
 import type { Entity, Memory, EntityRelationship } from '../types/index.js';
 
@@ -8,7 +8,7 @@ export interface SaveUserMessageArgs {
 
 export class SaveUserMessageTool {
   constructor(
-    private readonly dgraphService: DgraphService,
+    private readonly databaseService: DatabaseService,
     private readonly aiService: AIService
   ) {}
 
@@ -43,7 +43,7 @@ export class SaveUserMessageTool {
       // Check if entities already exist in the database
       const entityNames = extractedEntities.map(e => e.name);
       console.log(`[SaveUserMessage] Checking for existing entities in database...`);
-      const existingEntities = await this.dgraphService.findEntitiesByName(entityNames);
+      const existingEntities = await this.databaseService.findEntitiesByName(entityNames);
       const existingEntityNames = new Set(existingEntities.map(e => e.name));
       console.log(`[SaveUserMessage] Found ${existingEntities.length} existing entities out of ${entityNames.length} total`);
 
@@ -79,7 +79,7 @@ export class SaveUserMessageTool {
             createdAt: new Date().toISOString(),
           };
 
-          const uid = await this.dgraphService.saveEntity(newEntity);
+          const uid = await this.databaseService.saveEntity(newEntity);
           entityUids.push(uid);
           allEntities.push({ ...newEntity, uid });
           newEntitiesCreated++;
@@ -101,7 +101,7 @@ export class SaveUserMessageTool {
         entities: allEntities,
       };
 
-      const memoryUid = await this.dgraphService.saveMemory(memory, entityUids);
+      const memoryUid = await this.databaseService.saveMemory(memory, entityUids);
       console.log(`[SaveUserMessage] Memory saved successfully with UID: ${memoryUid}`);
 
       // Generate and save relationships between entities
@@ -130,7 +130,7 @@ export class SaveUserMessageTool {
         });
         
         console.log(`[SaveUserMessage] Saving ${enrichedRelationships.length} enriched relationships to database...`);
-        await this.dgraphService.saveEntityRelationships(enrichedRelationships, entityNameToUid);
+        await this.databaseService.saveEntityRelationships(enrichedRelationships, entityNameToUid);
         console.log(`[SaveUserMessage] Enriched relationships saved successfully`);
       } else {
         console.log(`[SaveUserMessage] No relationships found to save`);
