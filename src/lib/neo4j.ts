@@ -1,4 +1,4 @@
-import neo4j, { Driver, Session } from "neo4j-driver";
+import neo4j, { Driver } from "neo4j-driver";
 import type { Neo4jConfig, Entity, Memory, EntityRelationship } from "../types/index.js";
 import type { DatabaseService } from "./database-interface.js";
 
