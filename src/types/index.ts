@@ -28,6 +28,18 @@ export interface DgraphConfig {
   connectionString: string;
 }
 
+export interface Neo4jConfig {
+  uri: string;
+  username?: string;
+  password?: string;
+}
+
+export interface DatabaseConfig {
+  type: 'dgraph' | 'neo4j';
+  dgraph?: DgraphConfig;
+  neo4j?: Neo4jConfig;
+}
+
 export interface AIConfig {
   provider: string;
   apiKey: string;

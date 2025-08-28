@@ -43,7 +43,8 @@ describe('GraphMemorySearchTool', () => {
       expect(mockDgraphService.vectorSearch).toHaveBeenCalledWith(mockEmbedding, 10);
       expect(mockAIService.generateMemorySummary).toHaveBeenCalledWith(
         [{ name: 'John Doe', type: 'PERSON' }],
-        mockSearchResults[0].memories
+        mockSearchResults[0].memories,
+        mockSearchResults[0].relatedTo
       );
     });
 

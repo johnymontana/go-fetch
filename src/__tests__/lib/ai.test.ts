@@ -36,8 +36,19 @@ describe('AIService', () => {
       embedding: [0.1, 0.2, 0.3, 0.4, 0.5],
     });
     
-    mockCreateOpenAI.mockReturnValue(((model: string) => `openai-${model}`) as any);
-    mockCreateAnthropic.mockReturnValue(((model: string) => `anthropic-${model}`) as any);
+    // Create provider function that also has textEmbedding method
+    const mockOpenAIProvider = Object.assign(
+      jest.fn((model: string) => `openai-${model}`),
+      { textEmbedding: jest.fn((model: string) => `openai-embedding-${model}`) }
+    );
+    
+    const mockAnthropicProvider = Object.assign(
+      jest.fn((model: string) => `anthropic-${model}`),
+      { textEmbedding: jest.fn((model: string) => `anthropic-embedding-${model}`) }
+    );
+    
+    mockCreateOpenAI.mockReturnValue(mockOpenAIProvider as any);
+    mockCreateAnthropic.mockReturnValue(mockAnthropicProvider as any);
     
     aiService = new AIService(mockAIConfig);
   });
@@ -140,7 +151,7 @@ describe('AIService', () => {
         { content: 'Discussed project requirements' },
       ];
 
-      const result = await aiService.generateMemorySummary(entities, memories);
+      const result = await aiService.generateMemorySummary(entities, memories, []);
 
       expect(result).toBe(mockSummary);
       expect(mockGenerateText).toHaveBeenCalledWith({
@@ -155,7 +166,7 @@ describe('AIService', () => {
       const entities = [{ name: 'John Doe', type: 'PERSON' }];
       const memories = [{ content: 'Some memory' }];
 
-      const result = await aiService.generateMemorySummary(entities, memories);
+      const result = await aiService.generateMemorySummary(entities, memories, []);
 
       expect(result).toBe('Found entities: John Doe (PERSON)');
     });
@@ -164,7 +175,7 @@ describe('AIService', () => {
       const mockSummary = 'No entities found';
       mockGenerateText.mockResolvedValue({ text: mockSummary });
 
-      const result = await aiService.generateMemorySummary([], []);
+      const result = await aiService.generateMemorySummary([], [], []);
 
       expect(result).toBe(mockSummary);
     });
