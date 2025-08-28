@@ -43,7 +43,7 @@
     "express": "^5.1.0",
     "neo4j-driver": "^5.26.0",
     "tsx": "^4.20.3",
-    "typescript": "^5.8.3",
+    "typescript": "^5.9.2",
     "zod": "^3.25.76"
   },
   "devDependencies": {
