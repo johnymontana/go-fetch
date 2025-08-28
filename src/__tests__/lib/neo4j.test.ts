@@ -158,7 +158,8 @@ describe('Neo4jService', () => {
       expect(mockSession.run).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          coordinates: { latitude: 37.4220, longitude: -122.0841 },
+          latitude: 37.4220,
+          longitude: -122.0841,
         })
       );
     });
@@ -242,17 +243,23 @@ describe('Neo4jService', () => {
     });
 
     it('should find entities by name', async () => {
-      const mockEntities = [
-        {
-          get: jest.fn()
-            .mockReturnValueOnce('element-123') // uid
-            .mockReturnValueOnce('John Doe') // name
-            .mockReturnValueOnce('PERSON') // type
-            .mockReturnValueOnce('Software engineer') // description
-            .mockReturnValueOnce('2023-01-01T00:00:00Z') // createdAt
-            .mockReturnValueOnce([0.1, 0.2, 0.3]), // embedding
-        }
-      ];
+      const mockRecord = {
+        get: jest.fn((field: string) => {
+          const values: { [key: string]: any } = {
+            'uid': 'element-123',
+            'name': 'John Doe',
+            'type': 'PERSON',
+            'description': 'Software engineer',
+            'createdAt': '2023-01-01T00:00:00Z',
+            'embedding': [0.1, 0.2, 0.3],
+            'latitude': null,
+            'longitude': null
+          };
+          return values[field];
+        })
+      };
+
+      const mockEntities = [mockRecord];
 
       mockSession.run.mockResolvedValue({ records: mockEntities });
 
@@ -266,6 +273,7 @@ describe('Neo4jService', () => {
         description: 'Software engineer',
         createdAt: '2023-01-01T00:00:00Z',
         embedding: [0.1, 0.2, 0.3],
+        coordinates: undefined,
       });
 
       expect(mockSession.run).toHaveBeenCalledWith(

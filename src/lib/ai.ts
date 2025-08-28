@@ -67,7 +67,82 @@ export class AIService {
       console.log(`[AIService] Raw LLM response: ${text}`);
       
       console.log(`[AIService] Parsing JSON response...`);
-      const parsed = JSON.parse(text);
+
+      // Try to clean and parse the JSON response
+      let parsed;
+      try {
+        // First try direct parsing
+        parsed = JSON.parse(text);
+      } catch {
+        console.log(`[AIService] Direct JSON parsing failed, attempting to clean response...`);
+
+        // Try to extract JSON from the response
+        let cleanedResponse = text.trim();
+
+        // Remove markdown code blocks if present
+        cleanedResponse = cleanedResponse.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
+
+        // Try to find JSON object boundaries
+        const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          cleanedResponse = jsonMatch[0];
+        }
+
+        // Remove any trailing text after the JSON object
+        const lastBraceIndex = cleanedResponse.lastIndexOf('}');
+        if (lastBraceIndex !== -1) {
+          cleanedResponse = cleanedResponse.substring(0, lastBraceIndex + 1);
+        }
+
+        // Fix common JSON escaping issues
+        // Replace unescaped apostrophes and quotes in string values
+        cleanedResponse = cleanedResponse.replace(/"([^"]*?)'([^"]*?)"/g, '"$1\\\'$2"');
+        cleanedResponse = cleanedResponse.replace(/'([^']*?)"([^']*?)'/g, '\'$1\\"$2\'');
+
+        // Fix missing commas between array elements
+        // Look for patterns like }}{"name" and add missing commas
+        cleanedResponse = cleanedResponse.replace(/}\s*\{/g, '},{');
+
+        // Also fix missing commas in nested objects
+        cleanedResponse = cleanedResponse.replace(/}\s*"([^"]+)":/g, '}, "$1":');
+
+        // Fix double closing braces that commonly break JSON
+        // Look for patterns like }}] and fix them to }]
+        cleanedResponse = cleanedResponse.replace(/}\s*}\s*\]/g, '}]');
+
+        // Also fix patterns like }}}
+        cleanedResponse = cleanedResponse.replace(/}\s*}\s*}/g, '}}');
+
+        console.log(`[AIService] Cleaned response: ${cleanedResponse}`);
+
+        try {
+          parsed = JSON.parse(cleanedResponse);
+        } catch (cleanParseError) {
+          console.error(`[AIService] Cleaned JSON parsing also failed:`, cleanParseError);
+
+          // Try one more time with more aggressive cleaning
+          try {
+            console.log(`[AIService] Attempting aggressive JSON cleaning...`);
+
+            // Remove all problematic characters that commonly break JSON
+            const aggressiveCleaned = cleanedResponse
+              .replace(/'/g, "\\'")  // Escape all single quotes
+              .replace(/"/g, '\\"')  // Escape all double quotes
+              .replace(/\\"/g, '"')  // But keep the JSON structure quotes
+              .replace(/\\'/g, "'"); // And keep the JSON structure single quotes
+
+            console.log(`[AIService] Aggressively cleaned response: ${aggressiveCleaned}`);
+
+            parsed = JSON.parse(aggressiveCleaned);
+            console.log(`[AIService] Aggressive cleaning succeeded!`);
+          } catch (aggressiveError) {
+            console.error(`[AIService] Aggressive cleaning also failed:`, aggressiveError);
+            console.error(`[AIService] Failed to parse LLM response as JSON. Response was: "${text}"`);
+            return [];
+          }
+        }
+      }
+
       const entities = parsed.entities || [];
       console.log(`[AIService] Successfully extracted ${entities.length} entities`);
       entities.forEach((entity: any, index: number) => {

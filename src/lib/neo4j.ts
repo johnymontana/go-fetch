@@ -104,8 +104,11 @@ export class Neo4jService implements DatabaseService {
         SET e.description = $description,
             e.createdAt = datetime($createdAt),
             e.embedding = $embedding,
-            e.coordinates = $coordinates
-        RETURN e.elementId as uid
+            e.latitude = $latitude,
+            e.longitude = $longitude,
+            e.location = point({latitude: $latitude, longitude: $longitude}),
+            e.uid = randomUUID()
+        RETURN e.uid as uid
       `;
       
       const result = await session.run(query, {
@@ -114,7 +117,8 @@ export class Neo4jService implements DatabaseService {
         description: entity.description || "",
         createdAt: entity.createdAt,
         embedding: entity.embedding || [],
-        coordinates: entity.coordinates || null
+        latitude: entity.coordinates?.latitude || null,
+        longitude: entity.coordinates?.longitude || null
       });
       
       if (result.records.length === 0) {
@@ -134,6 +138,7 @@ export class Neo4jService implements DatabaseService {
 
   async saveMemory(memory: Memory, entityUids: string[]): Promise<string> {
     console.log(`[Neo4jService] Saving memory with ${entityUids.length} linked entities`);
+    console.log(`[Neo4jService] Entity UIDs: ${entityUids}`);
     console.log(`[Neo4jService] Memory content length: ${memory.content.length} characters`);
     console.log(`[Neo4jService] Memory embedding size: ${memory.embedding?.length || 0}`);
     
@@ -147,9 +152,9 @@ export class Neo4jService implements DatabaseService {
         })
         WITH m
         UNWIND $entityUids as entityId
-        MATCH (e:Entity) WHERE e.elementId = entityId
+        MATCH (e:Entity) WHERE e.uid = entityId
         CREATE (m)-[:RELATES_TO]->(e)
-        RETURN m.elementId as uid
+        RETURN m.uid as uid
       `;
       
       const result = await session.run(query, {
@@ -182,27 +187,35 @@ export class Neo4jService implements DatabaseService {
       const query = `
         MATCH (e:Entity)
         WHERE e.name IN $names
-        RETURN e.elementId as uid, e.name as name, e.type as type, 
+        RETURN e.id as uid, e.name as name, e.type as type,
                e.description as description, e.createdAt as createdAt,
-               e.embedding as embedding
+               e.embedding as embedding, e.latitude as latitude, e.longitude as longitude
       `;
       
       const result = await session.run(query, { names });
       
-      const entities: Entity[] = result.records.map(record => ({
-        uid: record.get('uid'),
-        name: record.get('name'),
-        type: record.get('type'),
-        description: record.get('description'),
-        createdAt: record.get('createdAt').toString(),
-        embedding: record.get('embedding')
-      }));
-      
-      console.log(`[Neo4jService] Found ${entities.length} existing entities`);
-      entities.forEach((entity: Entity) => {
-        console.log(`[Neo4jService] - ${entity.name} (${entity.type}) [${entity.uid}]`);
+      const entities: Entity[] = result.records.map(record => {
+        const latitude = record.get('latitude');
+        const longitude = record.get('longitude');
+
+        // Reconstruct coordinates object if both latitude and longitude exist
+        let coordinates = undefined;
+        if (latitude !== null && longitude !== null) {
+          coordinates = { latitude, longitude };
+        }
+
+        return {
+          uid: record.get('uid'),
+          name: record.get('name'),
+          type: record.get('type'),
+          description: record.get('description'),
+          createdAt: record.get('createdAt')?.toString() || new Date().toISOString(),
+          embedding: record.get('embedding'),
+          coordinates
+        };
       });
       
+      console.log(`[Neo4jService] Found ${entities.length} entities`);
       return entities;
     } catch (error) {
       console.error(`[Neo4jService] Error searching entities:`, error);
@@ -306,12 +319,14 @@ export class Neo4jService implements DatabaseService {
         
         const query = `
           MATCH (from:Entity), (to:Entity)
-          WHERE from.elementId = $fromUid AND to.elementId = $toUid
+          WHERE from.uid = $fromUid AND to.uid = $toUid
           CREATE (from)-[r:RELATED_TO {
             type: $relType,
             validAt: datetime($validAt),
-            invalidAt: $invalidAt
+            invalidAt: $invalidAt,
+            uid: randomUUID()
           }]->(to)
+          RETURN r.uid as uid
         `;
         
         await session.run(query, {
