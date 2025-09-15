@@ -44,7 +44,7 @@
     "neo4j-driver": "^5.26.0",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3",
-    "zod": "^3.25.76"
+    "zod": "^4.1.8"
   },
   "devDependencies": {
     "@jest/globals": "^30.0.5",
