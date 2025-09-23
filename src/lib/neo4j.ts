@@ -148,7 +148,8 @@ export class Neo4jService implements DatabaseService {
         CREATE (m:Memory {
           content: $content,
           timestamp: datetime($timestamp),
-          embedding: $embedding
+          embedding: $embedding,
+          uid: randomUUID()
         })
         WITH m
         UNWIND $entityUids as entityId
@@ -236,13 +237,13 @@ export class Neo4jService implements DatabaseService {
         YIELD node as e, score
         OPTIONAL MATCH (e)<-[:RELATES_TO]-(m:Memory)
         WITH e, score, collect(DISTINCT {
-          uid: m.elementId,
+          uid: m.uid,
           content: m.content,
           timestamp: toString(m.timestamp)
         }) as memories
         OPTIONAL MATCH (e)-[r:RELATED_TO]->(related:Entity)
         WITH e, score, memories, collect(DISTINCT {
-          uid: related.elementId,
+          uid: related.uid,
           name: related.name,
           type: related.type,
           description: related.description,
@@ -250,7 +251,7 @@ export class Neo4jService implements DatabaseService {
           embedding: related.embedding,
           relationshipType: r.type
         }) as relatedEntities
-        RETURN e.elementId as uid, e.name as name, e.type as type,
+        RETURN e.uid as uid, e.name as name, e.type as type,
                e.description as description, e.createdAt as createdAt,
                e.embedding as embedding, memories, relatedEntities, score
         ORDER BY score DESC
