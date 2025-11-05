@@ -17,7 +17,7 @@ class LocomoIngester {
       maxSessions: config.maxSessions,
       maxMessages: config.maxMessages,
       filePath: config.filePath || './eval/locomo/Locomo-10.json',
-      mcpServerUrl: config.mcpServerUrl || 'http://localhost:3001',
+      mcpServerUrl: config.mcpServerUrl || 'http://localhost:3003',
       ...config
     };
     
